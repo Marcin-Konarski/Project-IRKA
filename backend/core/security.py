@@ -53,14 +53,6 @@ def authenticate_user(session: SessionDep, username: str, password: str) -> str:
     return access_token
 
 
-# def get_user_and_session(token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep) -> Tuple[User, SessionDep]:
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials.",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-
-
 def get_user_and_session(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
     session: SessionDep,

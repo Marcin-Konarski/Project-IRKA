@@ -8,4 +8,6 @@ python -m pip install -e .\backend[dev]
 
 Run backend in Docker container:
 ```
-
+docker compose build
+docker compose up -d
+```
