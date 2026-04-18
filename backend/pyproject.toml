@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "PROJECT_IRKA"
+description = "Backend (FastAPI) for the DarkCTI IRKA - Information Reconnaissance and Knowledge Analyzer"
+version = "2026.0.0a1"
+requires-python = ">=3.14,<3.15"
+authors = [
+  {name = "Marcin Konarski"},
+  {name = "Marcin Drebot"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: FastAPI",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+  "fastapi[standard]>=0.128.0",
+  "uvicorn[standard]>=0.40.0",
+  "pydantic>=2.0.0",
+  "pydantic-settings>=2.0.0",
+  "python-dotenv>=1.0.0",
+  "sqlmodel>=0.0.32",
+  "SQLAlchemy>=2.0.0",
+  "alembic>=1.18.0",
+  "psycopg2-binary>=2.9.0",
+  "telethon==1.43.0",
+  "PyJWT>=2.0.0",
+  "pwdlib[argon2]>=0.3.0",
+]
+
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-mock>=3.10.0",
+  "httpx>=0.28.0",
+  "ruff>=0.3.0",
+  "pre-commit>=3.0.0",
+]
+
+
+[project.urls]
+Repository = "https://github.com/Marcin-Konarski/Project-IRKA.git"
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+

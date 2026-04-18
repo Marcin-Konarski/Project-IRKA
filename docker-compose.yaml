@@ -1,0 +1,42 @@
+services:
+
+  postgres:
+    image: postgres:18.1-bookworm
+    container_name: IRKA_database
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - datairka:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
+
+  # FastAPI backend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: IRKA_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app/backend # Hot-reload
+    restart: unless-stopped
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] #* Run in development environment 
+
+
+volumes:
+  datairka:
