@@ -9,7 +9,6 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY environment variable is not set")
 
-
 class Config(BaseSettings):
     app_name: str = "Project IRKA"
     db_host: str
@@ -17,7 +16,7 @@ class Config(BaseSettings):
     db_user: str
     db_password: str
     db_name: str
-    cors_origins: str = ""
+    cors_origins: list[str]
     api_id: str
     api_hash: str
     phone: str

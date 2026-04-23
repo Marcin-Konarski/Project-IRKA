@@ -1,31 +1,35 @@
-# from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # from .db.database import init_db
 from .core.config import config
-from .routers import users, core
+from .routers import channels, users
+from .core.backfill_worker import BackfillWorker
 
 
-# Init database before the app runs. Only use if Alembic migrations are not used
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     init_db()
-#     yield
+# Manage BackfillWorker during app lifetime
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    worker = BackfillWorker()
+    await worker.get_client() # Connect once
+    yield
+    await worker.disconnect() # Disconnect cleanly
 
-# app = FastAPI(title=config.app_name, lifespan=lifespan)
-app = FastAPI(title=config.app_name)
+
+app = FastAPI(title=config.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in config.cors_origins.split(",") if o.strip()],
+    # allow_origin_regex=r"^http://localhost(:\d+)?$",
+    allow_origins=config.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(users.router)
-app.include_router(core.router)
+app.include_router(channels.router)
 
 
 @app.get("/")
