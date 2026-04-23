@@ -1,18 +1,20 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # from .db.database import init_db
 from .core.config import config
+from .db.session import SessionLocal
 from .routers import channels, users
-from .core.backfill_worker import BackfillWorker
-
+from .core.backfill_worker import BackfillWorker, run_worker_safe
 
 # Manage BackfillWorker during app lifetime
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     worker = BackfillWorker()
     await worker.get_client() # Connect once
+    asyncio.create_task(run_worker_safe(SessionLocal, worker))
     yield
     await worker.disconnect() # Disconnect cleanly
 

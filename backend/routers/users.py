@@ -27,9 +27,7 @@ def signup_user(user: Annotated[UserRequest, Body()], session: SessionDep) -> An
 # Accepts application/json
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 def login_user(user: Annotated[UserRequest, Body()], session: SessionDep) -> Any:
-    access_token = authenticate_user(
-        session, user.username, user.password.get_secret_value()
-    )
+    access_token = authenticate_user(session, user.username, user.password.get_secret_value())
     return Token(access_token=access_token, token_type="bearer")
 
 

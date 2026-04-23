@@ -4,15 +4,14 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlmodel import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert
 from psycopg2.errors import UniqueViolation
 
 from .session import SessionDep
-from ..models import User
+from ..models import User, Message
 
 
-def _parse_postgres_duplicate_key(
-    error: IntegrityError,
-) -> tuple[str | None, str | None]:
+def _parse_postgres_duplicate_key(error: IntegrityError) -> tuple[str | None, str | None]:
     """
     Helper function that extracts constraint and details from PostgreSQL's UniqueViolation error.
     """
@@ -32,9 +31,7 @@ def _parse_postgres_duplicate_key(
     return constraint, duplicate_value
 
 
-def _create_message_for_duplicate_key_violation(
-    error: IntegrityError, default_error_message: str
-) -> str:
+def _create_message_for_duplicate_key_violation(error: IntegrityError, default_error_message: str) -> str:
     """
     Helper function that creates a response message to diffrentiate between situations where project with
     specified name already exists or document with specified name already exists.
@@ -44,18 +41,13 @@ def _create_message_for_duplicate_key_violation(
 
     print(f"\n\n\n{constraint=}\n{duplicate_value=}\n\n\n")
 
-    if constraint == "project_name_key":
-        return f"Project with name '{duplicate_value}' already exists."
-
-    if constraint == "document_name_key":
-        return f"Document with name '{duplicate_value}' already exists."
+    if constraint == "constraint_name":
+        return f"constraint_name with name '{duplicate_value}' already exists."
 
     return default_error_message
 
 
-def commit_or_409(
-    session: SessionDep, error_message: str, extract_details: bool = False
-):
+def commit_or_409(session: SessionDep, error_message: str, extract_details: bool = False):
     try:
         session.commit()
     except IntegrityError as e:
@@ -63,13 +55,9 @@ def commit_or_409(
 
         if hasattr(e, "orig") and isinstance(e.orig, UniqueViolation):
             if extract_details:
-                error_message = _create_message_for_duplicate_key_violation(
-                    e, error_message
-                )
+                error_message = _create_message_for_duplicate_key_violation(e, error_message)
 
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail=error_message
-            )
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error_message)
         raise e
 
 
@@ -85,7 +73,14 @@ def get_user_by_username(session: SessionDep, username: str) -> User:
     statement = select(User).where(User.username == username)
     user = session.exec(statement).one_or_none()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No user with that username."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user with that username.")
     return user
+
+
+def insert_messages(session: SessionDep, rows: list[dict]):
+    stmt = insert(Message).values(rows)
+    stmt = stmt.on_conflict_do_nothing(index_elements=["channel_id", "message_id"])
+    session.exec(stmt)
+    # session.commit()
+
+
