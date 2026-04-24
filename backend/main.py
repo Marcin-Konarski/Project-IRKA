@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import config
 from .db.session import SessionLocal
 from .routers import channels, users
-from .core.backfill_worker import BackfillWorker, run_worker_safe
+from .core.backfill import BackfillWorker
+from .core.worker import run_worker_safe
 
 # Manage BackfillWorker during app lifetime
 @asynccontextmanager

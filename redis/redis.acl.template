@@ -1,2 +1,2 @@
 user default off
-user app on >$APP_PASS ~* +@all
+user app on >$APP_PASS ~* &* +@all

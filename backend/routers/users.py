@@ -5,7 +5,7 @@ from ..db.session import SessionDep
 from ..db.utility import commit_or_409
 from ..core.security import get_password_hash, authenticate_user, get_user_and_session
 from ..schemas.user import UserRequest, UserResponse, Token
-from ..models.user import User
+from ..models import User
 
 
 router = APIRouter(prefix="/auth", tags=["users"])

@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 name = "PROJECT_IRKA"
 description = "Backend (FastAPI) for the DarkCTI IRKA - Information Reconnaissance and Knowledge Analyzer"
 version = "2026.0.0a1"
-requires-python = ">=3.14,<3.15"
+requires-python = ">=3.12,<3.15"
 authors = [
   {name = "Marcin Konarski"},
   {name = "Marcin Drebot"},
@@ -31,6 +31,7 @@ dependencies = [
   "telethon==1.43.0",
   "PyJWT>=2.0.0",
   "pwdlib[argon2]>=0.3.0",
+  "redis[asyncio]>=7.2",
 ]
 
 

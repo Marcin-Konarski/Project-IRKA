@@ -20,27 +20,33 @@ services:
     restart: unless-stopped
 
 
-  # Redis message queue
-  redis:
-    build:
-      context: .
-      dockerfile: redis/Dockerfile
-    container_name: IRKA_redis
-    volumes:
-      - redis-data:/data
-      - ./redis/redis.acl.template:/usr/local/etc/redis/users.acl.template:ro
-      - ./redis/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
-    env_file:
-      - .env
-    environment:
-      APP_PASS: ${REDIS_PASSWORD}
-    entrypoint: ["/usr/local/bin/entrypoint.sh"]
-    command: ["--aclfile", "/usr/local/etc/redis/users.acl", "--appendonly", "yes", "--protected-mode", "yes"]
-    # Redis acl user with minimal permissions. Adjust as needed:
-    # user app on >$APP_PASS ~* +ping +echo +client|id +info +select +get +set +mget +mset +del +exists +expire +pexpire +ttl +pttl +persist +incr +decr +lpush +rpush +lpop +rpop +llen +lrange +publish +subscribe
+  # # Redis message queue
+  # redis:
+  #   build:
+  #     context: .
+  #     dockerfile: redis/Dockerfile
+  #   container_name: IRKA_redis
+  #   volumes:
+  #     - redis-data:/data
+  #     - ./redis/redis.acl.template:/usr/local/etc/redis/users.acl.template:ro
+  #     - ./redis/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     APP_PASS: ${REDIS_PASSWORD}
+  #   entrypoint: ["/usr/local/bin/entrypoint.sh"]
+  #   command: ["--aclfile", "/usr/local/etc/redis/users.acl", "--appendonly", "yes", "--protected-mode", "yes"]
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+  #     interval: 1s
+  #     timeout: 3s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   # Redis acl user with minimal permissions. Adjust as needed:
+  #   # user app on >$APP_PASS ~* +ping +echo +client|id +info +select +get +set +mget +mset +del +exists +expire +pexpire +ttl +pttl +persist +incr +decr +lpush +rpush +lpop +rpop +llen +lrange +publish +subscribe
 
-    # login to redis:
-    # docker compose exec -it redis sh -lc 'redis-cli --user app --pass "$REDIS_PASSWORD"'
+  #   # login to redis:
+  #   # docker compose exec -it redis sh -lc 'redis-cli --user app --pass "$REDIS_PASSWORD"'
 
   # FastAPI backend
   backend:
