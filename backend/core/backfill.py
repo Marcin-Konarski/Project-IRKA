@@ -8,9 +8,10 @@ from telethon.errors import FloodWaitError, UsernameNotOccupiedError, UsernameIn
 from telethon.tl.types import Message as TgMessage, User, Chat, Channel
 
 from .config import config
-from ..db.utility import insert_messages
-from ..models import BackfillJob
 from .queue import JobQueue
+from ..db.utility import insert_messages
+from ..db.session import SessionLocal
+from ..models import BackfillJob
 
 
 class BackfillWorker:
@@ -28,7 +29,7 @@ class BackfillWorker:
         async with self._client_lock:
             if self._client is None or not self._client.is_connected():
                 self._client = TelegramClient(
-                    "session_name",
+                    "session_backfill",
                     config.api_id,
                     config.api_hash,
                     connection_retries=3,
@@ -43,7 +44,7 @@ class BackfillWorker:
             await self._client.disconnect()
             self._client = None
 
-    async def get_channel(self, client: TelegramClient, channel: str) -> User | Chat | Channel:
+    async def get_channel(self, client: TelegramClient, channel: str) -> Chat | Channel:
         try:
             return await client.get_entity(channel)
         except (UsernameNotOccupiedError, UsernameInvalidError) as e:
@@ -52,6 +53,8 @@ class BackfillWorker:
             raise RuntimeError(f"Could not resolve entity '{channel}': {e}")
 
     async def run_backfill_job_old(self, session_factory, job_id: UUID, batch_size: int = 500):
+        from .monitor import MonitorWorker # Local import avoids circular dependency error
+
         # Each task owns its session for its entire lifetime
         with session_factory() as session:
             job: BackfillJob = session.get(BackfillJob, job_id)
@@ -90,6 +93,8 @@ class BackfillWorker:
                         job.status = "done"
                         session.commit()
                         await queue.put({"status": job.status, "total": total})
+                        monitor = MonitorWorker()
+                        await monitor.add_channel_monitor(SessionLocal, job.channel_name)
                         break
 
                     rows = [
@@ -121,6 +126,8 @@ class BackfillWorker:
                         job.status = "done"
                         session.commit()
                         await queue.put({"status": job.status, "total": total})
+                        monitor = MonitorWorker()
+                        await monitor.add_channel_monitor(SessionLocal, job.channel_name)
                         break
 
                 except FloodWaitError as e:
@@ -251,6 +258,7 @@ class BackfillWorker:
                 await asyncio.sleep(e.seconds + 2)
 
     async def run_backfill_job(self, session_factory, job_id: UUID, batch_size: int = 100):
+        from .monitor import MonitorWorker # Local import avoids circular dependency error
 
         with session_factory() as session:
             job = self._load_job(session, job_id)
@@ -271,10 +279,14 @@ class BackfillWorker:
 
             try:
                 await self._run_with_takeout(client, entity, session, job, queue, batch_size, offset_id, total)
+                monitor = MonitorWorker()
+                await monitor.add_channel_monitor(session_factory, job.channel_name)
 
             except TakeoutInitDelayError as e:
                 await asyncio.sleep(e.seconds + 2)
                 await self._run_with_fallback(client, entity, session, job, queue, batch_size, offset_id, total)
+                monitor = MonitorWorker()
+                await monitor.add_channel_monitor(session_factory, job.channel_name)
 
             except FloodWaitError as e:
                 await asyncio.sleep(e.seconds + 2)

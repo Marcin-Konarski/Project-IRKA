@@ -8,16 +8,21 @@ from .core.config import config
 from .db.session import SessionLocal
 from .routers import channels, users
 from .core.backfill import BackfillWorker
+from .core.monitor import MonitorWorker
 from .core.worker import run_worker_safe
 
 # Manage BackfillWorker during app lifetime
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    worker = BackfillWorker()
-    await worker.get_client() # Connect once
-    asyncio.create_task(run_worker_safe(SessionLocal, worker))
+    backfill_worker = BackfillWorker()
+    monitor_worker = MonitorWorker()
+    await backfill_worker.get_client() # Connect once
+    await monitor_worker.get_client()
+    await monitor_worker.restart_monitors(SessionLocal)
+    asyncio.create_task(run_worker_safe(SessionLocal, backfill_worker))
     yield
-    await worker.disconnect() # Disconnect cleanly
+    await monitor_worker.disconnect()
+    await backfill_worker.disconnect() # Disconnect cleanly
 
 
 app = FastAPI(title=config.app_name, lifespan=lifespan)
