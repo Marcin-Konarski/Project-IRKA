@@ -50,10 +50,12 @@ async def worker_loop(session_factory, worker: BackfillWorker):
             await asyncio.sleep(0.5) # Brief pause to avoid starting the same job again
 
 
-async def run_backfill_job_safe(session_factory, worker: BackfillWorker, job_id: UUID):
+JOB_SEMAPHORE = asyncio.Semaphore(1)
+
+async def run_backfill_job_safe(session_factory, worker, job_id):
     """Wraps run_backfill_job and marks the job failed on unexpected errors."""
-    _semaphore = asyncio.Semaphore(5)
-    async with _semaphore:
+    async with JOB_SEMAPHORE:
+        await worker.run_backfill_job(session_factory, job_id)
         try:
             await worker.run_backfill_job(session_factory, job_id)
         except Exception as e:

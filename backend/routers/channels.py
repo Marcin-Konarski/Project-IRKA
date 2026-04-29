@@ -6,7 +6,6 @@ from sqlmodel import select
 
 from ..db.session import SessionDep
 from ..models import Message, BackfillJob #, User
-from ..schemas.channel import ChannelRequest
 # from ..core.security import get_user_and_session
 from ..core.queue import JobQueue
 
@@ -14,16 +13,16 @@ from ..core.queue import JobQueue
 router = APIRouter(tags=["core"])
 
 
-@router.post("/channel/backfill")
-async def start_backfill(request: ChannelRequest, session: SessionDep):
+@router.post("/channels/{channel_name}/backfill")
+async def start_backfill(channel_name: str, session: SessionDep):
 
-    job = BackfillJob(channel_name=request.channel)
+    job = BackfillJob(channel_name=channel_name)
 
     session.add(job)
     session.commit()
     session.refresh(job)
 
-    return {"job_id": job.id}
+    return {"job_id": str(job.id)}
 
 
 @router.get("/jobs/{job_id}")
@@ -51,7 +50,7 @@ async def get_job(job_id: UUID, session: SessionDep, http: bool | None = None):
     )
 
 
-@router.get("/channel/{channel_id}/messages")
+@router.get("/channels/{channel_id}/messages")
 async def get_messages(channel_id: int, session: SessionDep):
 
     messages = session.exec(
