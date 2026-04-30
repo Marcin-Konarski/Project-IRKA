@@ -19,7 +19,7 @@ class JobQueue:
     def remove_queue(self, job_id: str) -> None:
         self._job_queue.pop(job_id, None)
 
-    async def generator(self, job_id: str, should_unsubscribe = False):
+    async def generator(self, job_id: str):
         queue = self.get_queue(job_id)
         try:
             while True:
@@ -28,7 +28,6 @@ class JobQueue:
                     break
                 yield f"data: {json.dumps(event)}\n\n"
         finally:
-            if not should_unsubscribe:
-                self.remove_queue(job_id)
+            self.remove_queue(job_id)
 
 

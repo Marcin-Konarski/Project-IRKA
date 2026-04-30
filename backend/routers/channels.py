@@ -8,6 +8,7 @@ from ..db.session import SessionDep, SessionLocal
 from ..models import Message, BackfillJob #, User
 # from ..core.security import get_user_and_session
 from ..core.queue import JobQueue
+from ..core.subscribers import SubscribersQueue
 
 
 router = APIRouter(tags=["core"])
@@ -62,9 +63,8 @@ async def get_messages(channel_id: int, session: SessionDep):
 
 @router.get("/channels/{channel_name}/subscribe")
 async def subscribe_to_channel(channel_name: str):
-    queue = JobQueue()
     return StreamingResponse(
-        queue.generator(f"monitor:{channel_name}", should_unsubscribe=True),
+        SubscribersQueue().generator(f"monitor:{channel_name}"),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )

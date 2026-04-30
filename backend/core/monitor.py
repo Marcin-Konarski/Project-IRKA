@@ -5,7 +5,7 @@ from telethon.tl.types import Message as TgMessage, Chat, Channel
 from sqlmodel import select
 
 from .config import config
-from .queue import JobQueue
+from .subscribers import SuscribersQueue
 from ..models import MonitorJob
 from ..db.utility import insert_messages
 
@@ -83,14 +83,13 @@ class MonitorWorker:
 
     async def run_monitor_job(self, session_factory, channel_name: str, channel: Channel) -> None:
         client = await self.get_client()
-        queue = JobQueue().get_queue(f"monitor:{channel_name}")
 
-        @client.on(events.NewMessage(chats=channel.id)) # I want to pass here a list of CHANNELS to listen, not usernames!!
+        @client.on(events.NewMessage(chats=channel.id))
         async def handler(event):
 
             print('\n', "="*20, event, "="*20, "\n")
             message: TgMessage = event.message
-            row = row = {
+            row = {
                 "channel_id": event.chat_id,
                 "message_id": message.id,
                 "text": message.text or "",
@@ -101,7 +100,7 @@ class MonitorWorker:
                 insert_messages(session, [row])
                 session.commit()
 
-            await queue.put({"channel": channel_name, "new_message": message.text})
+            await SuscribersQueue().publish(f"monitor:{channel_name}", {"channel": channel_name, "new_message": message.text})
 
         try:
             await asyncio.Future()
@@ -109,7 +108,6 @@ class MonitorWorker:
             pass
         finally:
             client.remove_event_handler(handler)
-            JobQueue().remove_queue(f"monitor:{channel_name}")
             print(f"[monitor:{channel_name}] stopped")
 
     async def add_channel_monitor(self, session_factory, channel_name: str) -> MonitorJob:
