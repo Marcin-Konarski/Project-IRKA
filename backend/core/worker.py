@@ -1,5 +1,4 @@
 import asyncio
-from uuid import UUID
 from sqlmodel import select
 
 from ..models import BackfillJob

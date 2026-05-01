@@ -4,14 +4,15 @@ from uuid import UUID
 from datetime import datetime, timezone
 from telethon import TelegramClient
 from telethon.sessions import MemorySession
-from telethon.errors import FloodWaitError, UsernameNotOccupiedError, UsernameInvalidError, TakeoutInitDelayError
-from telethon.tl.types import Message as TgMessage, User, Chat, Channel
+from telethon.tl.functions.messages import ImportChatInviteRequest
+from telethon.errors import FloodWaitError, UsernameNotOccupiedError, UsernameInvalidError, TakeoutInitDelayError, UserAlreadyParticipantError
+from telethon.tl.types import Message as TgMessage, User, Chat, Channel as TgChannel
 
 from .config import config
 from .queue import JobQueue
 from ..db.utility import insert_messages
 from ..db.session import SessionLocal
-from ..models import BackfillJob
+from ..models import BackfillJob, Channel as DBChannel
 
 
 class BackfillWorker:
@@ -44,13 +45,32 @@ class BackfillWorker:
             await self._client.disconnect()
             self._client = None
 
-    async def get_channel(self, client: TelegramClient, channel: str) -> Chat | Channel:
-        try:
-            return await client.get_entity(channel)
-        except (UsernameNotOccupiedError, UsernameInvalidError) as e:
-            raise ValueError(f"Channel '{channel}' does not exist or is invalid: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Could not resolve entity '{channel}': {e}")
+    async def get_channel(self, client: TelegramClient, channel: str) -> TgChannel | Chat:
+        if "t.me/" in channel:
+            channel = channel.split("t.me/")[1]
+
+        is_invite = channel.startswith("+")
+        invite_hash = channel.lstrip("+")
+
+        if is_invite:
+            try:
+                result = await client(ImportChatInviteRequest(invite_hash))
+                return result.chats[0]
+            except UserAlreadyParticipantError:
+                raise ValueError(
+                    "You are already a member of this private channel. "
+                    "Private channels where the Telegram account is already a participant "
+                    "are not currently supported. Please use a public channel instead."
+                )
+            except Exception as e:
+                raise RuntimeError(f"Could not join private channel '{channel}': {e}")
+        else:
+            try:
+                return await client.get_entity(channel)
+            except (UsernameNotOccupiedError, UsernameInvalidError) as e:
+                raise ValueError(f"Channel '{channel}' does not exist or is invalid: {e}")
+            except Exception as e:
+                raise RuntimeError(f"Could not resolve '{channel}': {e}")
 
     async def run_backfill_job_old(self, session_factory, job_id: UUID, batch_size: int = 500):
         from .monitor import MonitorWorker # Local import avoids circular dependency error
@@ -147,6 +167,14 @@ class BackfillWorker:
         return job
 
     def _init_job(self, session, job, entity):
+        existing_channel = session.get(DBChannel, entity.id)
+        if not existing_channel:
+            channel = DBChannel(
+                id=entity.id,
+                channel_name=getattr(entity, "username", None) or str(entity.id),
+                title=getattr(entity, "title", ""),
+            )
+            session.add(channel)
         job.channel_id = entity.id
         session.commit()
 
@@ -219,7 +247,7 @@ class BackfillWorker:
             if not await takeout_client.is_user_authorized():
                 raise RuntimeError("Cloned takeout client is not authorized (auth_key copy failed)")
 
-            takeout_entity = await takeout_client.get_entity(job.channel_name)
+            takeout_entity = await self.get_channel(takeout_client, job.channel_name)
 
             async with takeout_client.takeout(finalize=True) as takeout:
                 await takeout.get_me()
