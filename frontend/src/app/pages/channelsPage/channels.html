@@ -1,0 +1,59 @@
+<!--
+    Page container:
+    - `max-w-5xl mx-auto` keeps it "almost full width" like the navbar (not edge-to-edge)
+    - `w-full` lets it expand to the available width
+    - `h-full min-h-0` lets it participate correctly in the app's flex "remaining space" layout
+-->
+<div class="w-full h-full min-h-0 max-w-5xl mx-auto px-4 pt-6 flex flex-col gap-12">
+
+
+    <!--
+      Search row:
+      - `ml-auto` pushes the row to the right
+      - `w-full max-w-md` makes it responsive: full width on small screens, capped on larger ones
+    -->
+    <div class="ml-auto w-full max-w-xs flex items-center gap-2">
+        <!-- `flex-1` makes the input take remaining space next to the square button -->
+        <label class="input flex-1 bg-transparent">
+            <svg lucideSearch class="h-[1em] opacity-50"></svg>
+            <input type="search" required placeholder="Search" />
+        </label>
+
+        <!-- `shrink-0` prevents the square button from getting compressed -->
+        <!-- <button class="btn btn-square shrink-0" (click)="addChannel()">
+            <svg lucidePlus></svg>
+        </button> -->
+        <app-modal [header]="modalHeader()" [label]="modalLabel()" modalTriggerStyling="btn btn-square shrink-0" (submitted)="addChannel($event)" >
+            <svg lucidePlus></svg>
+        </app-modal>
+    </div>
+
+
+
+
+
+
+
+
+    <!--
+      Card section:
+      - `flex justify-center` centers the card under the search row (vertically stacked)
+      - `w-full max-w-md` avoids the "squashed" look and stays responsive
+    -->
+    <div class="w-full flex justify-center">
+        <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+            <app-card></app-card>
+
+        </div>
+
+    </div>
+
+</div>

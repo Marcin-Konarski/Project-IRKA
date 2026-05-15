@@ -1,0 +1,52 @@
+@if (showAlert() || showErrorAlert().errors) {
+  <div class="mb-4 flex flex-col gap-3">
+    <app-alert [type]="showAlert() ? 'success' : 'error'" width="w-[700px]">
+      @if (showAlert()) {
+        Successfuly created account! Please log in now.
+      } @else {
+        {{ showErrorAlert().message }}
+      }
+    </app-alert>
+  </div>
+}
+
+
+<form [formRoot]="loginForm" novalidate class="w-full max-w-sm">
+    <fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xs border p-4">
+        <legend class="fieldset-legend">Login</legend>
+
+
+
+
+        <label class="floating-label mt-2">
+            <span>Username</span>
+            <input type="text" class="input input-bordered w-full" placeholder="username" [formField]="loginForm.username" autocomplete="off"/>
+        </label>
+        <!-- @if (showErrors() && loginForm.username().errors().length > 0) {
+          <div class="mt-1 flex flex-col gap-1 text-sm text-error">
+            @for (error of loginForm.username().errors(); track error.kind + error.message) {
+              <p>{{ error.message }}</p>
+            }
+          </div>
+        } -->
+
+
+
+
+        <label class="floating-label mt-3">
+            <span>Password</span>
+            <input type="password" class="input" placeholder="Password" [formField]="loginForm.password" autocomplete="off"/>
+        </label>
+        <!-- @if (showErrors() && loginForm.password().errors().length > 0) {
+          <div class="mt-1 flex flex-col gap-1 text-sm text-error">
+            @for (error of loginForm.password().errors(); track error.kind + error.message) {
+              <p>{{ error.message }}</p>
+            }
+          </div>
+        } -->
+
+
+
+        <button type="submit" class="btn btn-neutral mt-4" [disabled]="loginForm().pending()">Login</button>
+    </fieldset>
+</form>

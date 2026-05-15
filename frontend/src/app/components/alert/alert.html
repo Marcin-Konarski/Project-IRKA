@@ -1,0 +1,8 @@
+@if (visible()) {
+    <div role="alert" [class]="'alert alert-' + type() + ' ' + width() + ' fixed top-[15%] left-1/2 -translate-x-1/2 z-50 flex justify-between'">
+        <span>
+            <ng-content />
+        </span>
+        <button (click)="close()" class=" flex btn-circle btn-xs items-center justify-center"><svg lucideCircleX></svg></button>
+    </div>
+}

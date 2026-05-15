@@ -1,0 +1,81 @@
+@if (showErrorAlert().errors) {
+    <div class="mb-4 flex flex-col gap-3">
+        <app-alert type="error" width="w-[700px]">
+          {{ showErrorAlert().message }}
+        </app-alert>
+    </div>
+}
+
+
+<form [formRoot]="registerForm" (submit)="showErrors.set(true)" novalidate class="w-full max-w-sm">
+    <fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xs border p-4">
+        <legend class="fieldset-legend">Create Account</legend>
+
+
+        <label class="floating-label mt-2">
+            <span>Username</span>
+            <input type="text" class="input input-bordered w-full" placeholder="username" [formField]="registerForm.username"
+                (input)="showErrors.set(false)"
+                [class.input-error]="showErrors() && registerForm.username().invalid()" autocomplete="off"/>
+        </label>
+        @if (showErrors() && registerForm.username().errors().length > 0) {
+          <div class="mt-1 flex flex-col gap-1 text-sm text-error">
+            @for (error of registerForm.username().errors(); track error.kind + error.message) {
+              <p>{{ error.message }}</p>
+            }
+          </div>
+        }
+
+
+
+        <label class="floating-label mt-3">
+            <span>Email</span>
+            <input type="email" class="input" placeholder="Email" [formField]="registerForm.email"
+                (input)="showErrors.set(false)"
+                [class.input-error]="showErrors() && registerForm.email().invalid()" autocomplete="off"/>
+        </label>
+        @if (showErrors() && registerForm.email().errors().length > 0) {
+          <div class="mt-1 flex flex-col gap-1 text-sm text-error">
+            @for (error of registerForm.email().errors(); track error.kind + error.message) {
+              <p>{{ error.message }}</p>
+            }
+          </div>
+        }
+
+
+
+        <label class="floating-label mt-3">
+            <span>Password</span>
+            <input type="password" class="input" placeholder="Password" [formField]="registerForm.password"
+                (input)="showErrors.set(false)"
+                [class.input-error]="showErrors() && registerForm.password().invalid()" autocomplete="off"/>
+        </label>
+        @if (showErrors() && registerForm.password().errors().length > 0) {
+          <div class="mt-1 flex flex-col gap-1 text-sm text-error">
+            @for (error of registerForm.password().errors(); track error.kind + error.message) {
+              <p>{{ error.message }}</p>
+            }
+          </div>
+        }
+
+
+
+        <label class="floating-label mt-3"> 
+            <span>Repeat Password</span>
+            <input type="password" class="input" placeholder="Repeat Password" [formField]="registerForm.repeatPassword"
+                (input)="showErrors.set(false)"
+                [class.input-error]="showErrors() && registerForm.repeatPassword().invalid()" autocomplete="off"/>
+        </label>
+        @if (showErrors() && registerForm.repeatPassword().errors().length > 0) {
+          <div class="mt-1 flex flex-col gap-1 text-sm text-error">
+            @for (error of registerForm.repeatPassword().errors(); track error.kind + error.message) {
+              <p>{{ error.message }}</p>
+            }
+          </div>
+        }
+
+
+
+        <button type="submit" class="btn btn-neutral mt-4" [disabled]="registerForm().pending()">Sign Up</button>
+    </fieldset>
+</form>

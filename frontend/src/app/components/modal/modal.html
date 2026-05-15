@@ -1,0 +1,30 @@
+<button class="btn" onclick="my_modal_2.showModal()" [class]="modalTriggerStyling()"><ng-content /></button>
+
+<dialog #dialog id="my_modal_2" class="modal">
+    <div class="modal-box max-w-lg">
+        <h3 class="text-lg font-bold">{{ header() }}</h3>
+
+        <div class="mt-4">
+            <label class="floating-label my-2">
+                <span>{{ label() }}</span>
+                <input id="modal-input" type="text" class="input input-bordered w-full" [placeholder]="label()" autocomplete="off"
+                            [value]="inputValue() ?? ''" (input)="inputValue.set(($any($event.target)).value)" />
+            </label>
+        </div>
+
+        <div class="modal-action">
+            <!-- Optional cancel closes the dialog -->
+            @if (isCancelButton()) {
+                <form method="dialog">
+                    <button class="btn btn-ghost">Cancel</button>
+                </form>
+            }
+
+            <button type="button" class="btn btn-primary" (click)="submit()">{{ submitButtonText() }}</button>
+        </div>
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button aria-label="Close"></button>
+    </form>
+</dialog>
