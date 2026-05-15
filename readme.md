@@ -26,3 +26,11 @@ to get inside postgres DB, after running docker compose go with
 psql -u ${POSTGRES_USER} -d ${POSTGRES_DB}
 ```
 
+to run frontend go with
+```
+sudo apt install npm
+sudo npm install -g @angular/cli
+cd frontend 
+npm install
+ng serve
+```
