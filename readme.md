@@ -8,6 +8,21 @@ python -m pip install -e .\backend[dev]
 
 Run backend in Docker container:
 ```
-docker compose build
-docker compose up -d
+docker compose up -d --build
 ```
+
+Set you Telegram credentials beforehand
+```
+https://my.telegram.org/auth
+```
+then get to
+```
+https://my.telegram.org/apps
+```
+and set your app informations, then update .env file with app credentials
+
+to get inside postgres DB, after running docker compose go with
+```
+psql -u ${POSTGRES_USER} -d ${POSTGRES_DB}
+```
+
