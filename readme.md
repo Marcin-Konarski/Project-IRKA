@@ -6,7 +6,7 @@ python -m pip install -e .\backend
 python -m pip install -e .\backend[dev]
 ```
 
-Run backend in Docker container:
+Run whole application in Docker container:
 ```
 docker compose up -d --build
 ```
@@ -24,13 +24,4 @@ and set your app informations, then update .env file with app credentials
 to get inside postgres DB, after running docker compose go with
 ```
 psql -u ${POSTGRES_USER} -d ${POSTGRES_DB}
-```
-
-to run frontend go with
-```
-sudo apt install npm
-sudo npm install -g @angular/cli
-cd frontend 
-npm install
-ng serve
 ```
