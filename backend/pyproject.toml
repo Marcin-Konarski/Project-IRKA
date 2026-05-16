@@ -31,7 +31,6 @@ dependencies = [
   "telethon==1.43.0",
   "PyJWT>=2.0.0",
   "pwdlib[argon2]>=0.3.0",
-  "redis[asyncio]>=7.2",
 ]
 
 

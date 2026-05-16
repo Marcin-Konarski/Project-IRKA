@@ -5,6 +5,21 @@ import { firstValueFrom } from "rxjs";
 import { ApiResult, LoginData, LoginResponseBody, RegisterData, RegisterResponseBody,
         StartBackfillReturnData, BackfillRequest } from "../../types";
 
+export interface TelegramCodeRequest {
+    phone: string;
+}
+
+export interface TelegramCodeResponse {
+    phone_code_hash: string;
+    message: string;
+}
+
+export interface TelegramVerifyRequest {
+    phone: string;
+    code: string;
+    phone_code_hash: string;
+}
+
 @Injectable({providedIn: 'root'})
 export class ApiService {
     private http = inject(HttpClient);
@@ -36,6 +51,20 @@ export class ApiService {
 
     async startBackfill(body: BackfillRequest) {
         return await this.apiPostTemplate<BackfillRequest, StartBackfillReturnData>("/backfill-jobs", body);
+    }
+
+    async requestTelegramCode(phone: string) {
+        return await this.apiPostTemplate<TelegramCodeRequest, TelegramCodeResponse>(
+            "/auth/telegram/request",
+            { phone }
+        );
+    }
+
+    async verifyTelegramCode(phone: string, code: string, phone_code_hash: string) {
+        return await this.apiPostTemplate<TelegramVerifyRequest, any>(
+            "/auth/telegram/verify",
+            { phone, code, phone_code_hash }
+        );
     }
 
 }

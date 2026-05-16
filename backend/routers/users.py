@@ -5,6 +5,8 @@ from ..db.session import SessionDep
 from ..db.utility import commit_or_409
 from ..core.security import get_password_hash, authenticate_user, get_user_and_session
 from ..schemas.user import UserRequest, UserResponse, Token
+from ..schemas.telegram import TelegramCodeRequest, TelegramCodeVerify, TelegramCodeResponse
+from ..core.telegram_auth import request_telegram_code, verify_telegram_code
 from ..models import User
 
 
@@ -36,3 +38,32 @@ def login_user(user: Annotated[UserRequest, Body()], session: SessionDep) -> Any
 def get_user_info(session_and_user: tuple[User, SessionDep] = Depends(get_user_and_session)) -> Any:
     current_user, session = session_and_user
     return current_user
+
+
+# Telegram authentication
+@router.post("/telegram/request", response_model=TelegramCodeResponse, status_code=status.HTTP_200_OK)
+async def request_telegram_auth(request: Annotated[TelegramCodeRequest, Body()]) -> Any:
+    """Request Telegram verification code."""
+    try:
+        phone_code_hash = await request_telegram_code(request.phone)
+        return TelegramCodeResponse(
+            phone_code_hash=phone_code_hash,
+            message=f"Code sent to {request.phone}. Check your Telegram app."
+        )
+    except ValueError as e:
+        return {"error": str(e)}, status.HTTP_400_BAD_REQUEST
+
+
+@router.post("/telegram/verify", status_code=status.HTTP_200_OK)
+async def verify_telegram_auth(verify: Annotated[TelegramCodeVerify, Body()]) -> Any:
+    """Verify Telegram code and authenticate."""
+    try:
+        success = await verify_telegram_code(verify.phone, verify.code, verify.phone_code_hash)
+        if success:
+            return {
+                "success": True,
+                "message": "Successfully authenticated with Telegram",
+                "phone": verify.phone
+            }
+    except ValueError as e:
+        return {"error": str(e)}, status.HTTP_400_BAD_REQUEST

@@ -31,6 +31,11 @@ export class Navbar {
         },
         {
             id: 3,
+            name: "Telegram",
+            url: "/telegram"
+        },
+        {
+            id: 4,
             name: "Bomba",
             url: "/bomba"
         },

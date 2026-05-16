@@ -16,13 +16,34 @@ from .core.worker import run_worker_safe
 async def lifespan(app: FastAPI):
     backfill_worker = BackfillWorker()
     monitor_worker = MonitorWorker()
-    await backfill_worker.get_client() # Connect once
-    await monitor_worker.get_client()
-    await monitor_worker.restart_monitors(SessionLocal)
+    
+    try:
+        await backfill_worker.get_client() # Connect once
+    except EOFError:
+        print("⚠️  Telegram authentication not available (running in non-interactive mode)")
+    except Exception as e:
+        print(f"⚠️  Backfill worker initialization failed: {e}")
+    
+    try:
+        await monitor_worker.get_client()
+        await monitor_worker.restart_monitors(SessionLocal)
+    except EOFError:
+        print("⚠️  Monitor worker Telegram authentication not available")
+    except Exception as e:
+        print(f"⚠️  Monitor worker initialization failed: {e}")
+    
     asyncio.create_task(run_worker_safe(SessionLocal, backfill_worker))
     yield
-    await monitor_worker.disconnect()
-    await backfill_worker.disconnect() # Disconnect cleanly
+    
+    try:
+        await monitor_worker.disconnect()
+    except Exception:
+        pass
+    
+    try:
+        await backfill_worker.disconnect() # Disconnect cleanly
+    except Exception:
+        pass
 
 
 app = FastAPI(title=config.app_name, lifespan=lifespan)

@@ -16,11 +16,6 @@ class Config(BaseSettings):
     db_user: str
     db_password: str
     db_name: str
-    # redis_db: str = "0"
-    # redis_host: str = "redis"
-    # redis_port: int = 6379
-    # redis_username: str = "app"
-    # redis_password: str
     cors_origins: list[str]
     api_id: str
     api_hash: str
@@ -29,10 +24,6 @@ class Config(BaseSettings):
     @property
     def db_url(self) -> str:
         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-
-    # @property
-    # def redis_url(self) -> str:
-    #     return f"redis://{self.redis_username}:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
 config = Config()
 
