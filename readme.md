@@ -23,5 +23,6 @@ and set your app informations, then update .env file with app credentials
 
 to get inside postgres DB, after running docker compose go with
 ```
+docker compose exec -it postgres bash
 psql -u ${POSTGRES_USER} -d ${POSTGRES_DB}
 ```
