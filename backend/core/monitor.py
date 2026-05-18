@@ -1,10 +1,11 @@
 import asyncio
+from pathlib import Path
 from telethon import TelegramClient, events
-from telethon.errors import UsernameNotOccupiedError, UsernameInvalidError
 from telethon.tl.types import Message as TgMessage, Chat, Channel
 from sqlmodel import select
 
 from .config import config
+from .channel_utils import resolve_telegram_channel
 from .subscribers import SubscribersQueue
 from ..models import MonitorJob
 from ..db.utility import insert_messages
@@ -27,14 +28,18 @@ class MonitorWorker:
         async with self._client_lock:
             if self._client is None or not self._client.is_connected():
                 self._client = TelegramClient(
-                    "session_monitor",
+                    str(Path(__file__).resolve().parent.parent / "session_monitor"),
                     config.api_id,
                     config.api_hash,
                     connection_retries=3,
                     flood_sleep_threshold=60,
                     receive_updates=True,
                 )
-                await self._client.start(phone=config.phone)
+                await self._client.connect()
+                if not await self._client.is_user_authorized():
+                    await self._client.disconnect()
+                    self._client = None
+                    raise EOFError("Telegram authentication not available")
         return self._client
 
     async def disconnect(self) -> None:
@@ -44,9 +49,9 @@ class MonitorWorker:
 
     async def get_channel(self, client: TelegramClient, channel: str) -> Chat | Channel:
         try:
-            return await client.get_entity(channel)
-        except (UsernameNotOccupiedError, UsernameInvalidError) as e:
-            raise ValueError(f"Channel '{channel}' does not exist or is invalid: {e}")
+            return await resolve_telegram_channel(client, channel)
+        except ValueError:
+            raise
         except Exception as e:
             raise RuntimeError(f"Could not resolve entity '{channel}': {e}")
 

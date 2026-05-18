@@ -1,5 +1,5 @@
 from typing import Annotated, Any
-from fastapi import APIRouter, Depends, Body, status
+from fastapi import APIRouter, Depends, Body, HTTPException, status
 
 from ..db.session import SessionDep
 from ..db.utility import commit_or_409
@@ -7,6 +7,8 @@ from ..core.security import get_password_hash, authenticate_user, get_user_and_s
 from ..schemas.user import UserRequest, UserResponse, Token
 from ..schemas.telegram import TelegramCodeRequest, TelegramCodeVerify, TelegramCodeResponse
 from ..core.telegram_auth import request_telegram_code, verify_telegram_code
+from ..core.monitor import MonitorWorker
+from ..db.session import SessionLocal
 from ..models import User
 
 
@@ -51,7 +53,7 @@ async def request_telegram_auth(request: Annotated[TelegramCodeRequest, Body()])
             message=f"Code sent to {request.phone}. Check your Telegram app."
         )
     except ValueError as e:
-        return {"error": str(e)}, status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/telegram/verify", status_code=status.HTTP_200_OK)
@@ -60,10 +62,15 @@ async def verify_telegram_auth(verify: Annotated[TelegramCodeVerify, Body()]) ->
     try:
         success = await verify_telegram_code(verify.phone, verify.code, verify.phone_code_hash)
         if success:
+            try:
+                await MonitorWorker().restart_monitors(SessionLocal)
+            except Exception as e:
+                print(f"⚠️  Monitor restart after Telegram verify failed: {e}")
+
             return {
                 "success": True,
                 "message": "Successfully authenticated with Telegram",
                 "phone": verify.phone
             }
     except ValueError as e:
-        return {"error": str(e)}, status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

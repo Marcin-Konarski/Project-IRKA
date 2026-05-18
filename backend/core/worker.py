@@ -30,7 +30,19 @@ async def run_worker_safe(session_factory, worker: BackfillWorker):
 
 async def worker_loop(session_factory, worker: BackfillWorker):
     """Polls for pending jobs and dispatches them as background tasks."""
+    active_task: asyncio.Task | None = None
+
     while True:
+        try:
+            await worker.get_client()
+        except EOFError:
+            await asyncio.sleep(2)
+            continue
+
+        if active_task is not None and not active_task.done():
+            await asyncio.sleep(0.5)
+            continue
+
         with session_factory() as session:
 
             job: BackfillJob = session.exec(
@@ -45,7 +57,7 @@ async def worker_loop(session_factory, worker: BackfillWorker):
             job.status = "running"
             session.commit()
 
-            asyncio.create_task(run_backfill_job_safe(session_factory, worker, job_id)) # Pass only the ID — the task opens its own session
+            active_task = asyncio.create_task(run_backfill_job_safe(session_factory, worker, job_id)) # Pass only the ID — the task opens its own session
             await asyncio.sleep(0.5) # Brief pause to avoid starting the same job again
 
 

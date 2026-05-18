@@ -1,14 +1,16 @@
 import random
 import asyncio
+from pathlib import Path
 from uuid import UUID
 from datetime import datetime, timezone
 from telethon import TelegramClient
 from telethon.sessions import MemorySession
 from telethon.tl.functions.messages import ImportChatInviteRequest
-from telethon.errors import FloodWaitError, UsernameNotOccupiedError, UsernameInvalidError, TakeoutInitDelayError, UserAlreadyParticipantError
+from telethon.errors import FloodWaitError, TakeoutInitDelayError, UserAlreadyParticipantError
 from telethon.tl.types import Message as TgMessage, User, Chat, Channel as TgChannel
 
 from .config import config
+from .channel_utils import resolve_telegram_channel
 from .queue import JobQueue
 from ..db.utility import insert_messages
 from ..db.session import SessionLocal
@@ -30,14 +32,18 @@ class BackfillWorker:
         async with self._client_lock:
             if self._client is None or not self._client.is_connected():
                 self._client = TelegramClient(
-                    "session_backfill",
+                    str(Path(__file__).resolve().parent.parent / "session_backfill"),
                     config.api_id,
                     config.api_hash,
                     connection_retries=3,
                     flood_sleep_threshold=60,
                     receive_updates=False,
                 )
-                await self._client.start(phone=config.phone)
+                await self._client.connect()
+                if not await self._client.is_user_authorized():
+                    await self._client.disconnect()
+                    self._client = None
+                    raise EOFError("Telegram authentication not available")
         return self._client
 
     async def disconnect(self) -> None:
@@ -66,9 +72,9 @@ class BackfillWorker:
                 raise RuntimeError(f"Could not join private channel '{channel}': {e}")
         else:
             try:
-                return await client.get_entity(channel)
-            except (UsernameNotOccupiedError, UsernameInvalidError) as e:
-                raise ValueError(f"Channel '{channel}' does not exist or is invalid: {e}")
+                return await resolve_telegram_channel(client, channel)
+            except ValueError:
+                raise
             except Exception as e:
                 raise RuntimeError(f"Could not resolve '{channel}': {e}")
 
@@ -306,12 +312,6 @@ class BackfillWorker:
             await queue.put({"status": job.status, "total": total})
 
             try:
-                await self._run_with_takeout(client, entity, session, job, queue, batch_size, offset_id, total)
-                monitor = MonitorWorker()
-                await monitor.add_channel_monitor(session_factory, job.channel_name)
-
-            except TakeoutInitDelayError as e:
-                await asyncio.sleep(e.seconds + 2)
                 await self._run_with_fallback(client, entity, session, job, queue, batch_size, offset_id, total)
                 monitor = MonitorWorker()
                 await monitor.add_channel_monitor(session_factory, job.channel_name)

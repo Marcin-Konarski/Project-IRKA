@@ -38,15 +38,16 @@ export class TelegramComponent {
       this.phoneCodeHash = data.phone_code_hash;
       this.codeRequested.set(true);
     } else {
-      this.error.set(result.error?.error?.error || 'Failed to send code');
+      this.error.set(result.error?.error?.detail || result.error?.error?.error || 'Failed to send code');
     }
     
     this.loading.set(false);
   }
 
   async verifyCode() {
-    if (!this.code || this.code.length !== 5) {
-      this.error.set('Please enter a valid 5-digit code');
+    const normalizedCode = this.code.trim();
+    if (!/^\d{5,6}$/.test(normalizedCode)) {
+      this.error.set('Please enter a valid 5- or 6-digit code');
       return;
     }
 
@@ -55,7 +56,7 @@ export class TelegramComponent {
 
     const result = await this.apiService.verifyTelegramCode(
       this.phone,
-      this.code,
+      normalizedCode,
       this.phoneCodeHash
     );
 
@@ -63,7 +64,7 @@ export class TelegramComponent {
       // Success - redirect to home or next page
       this.router.navigate(['/']);
     } else {
-      this.error.set(result.error?.error?.error || 'Invalid code');
+      this.error.set(result.error?.error?.detail || result.error?.error?.error || 'Invalid code');
     }
 
     this.loading.set(false);

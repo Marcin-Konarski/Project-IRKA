@@ -1,12 +1,22 @@
-import asyncio
+import hashlib
+import shutil
+from pathlib import Path
 from telethon import TelegramClient
-from telethon.sessions import MemorySession
+from telethon.sessions import SQLiteSession
 from telethon.errors import SessionPasswordNeededError
 
 from .config import config
 
-# Store ongoing authentication sessions
-_auth_sessions: dict[str, TelegramClient] = {}
+_SESSION_DIR = Path(__file__).resolve().parent.parent / "telegram_auth_sessions"
+_BASE_DIR = Path(__file__).resolve().parent.parent
+_BACKFILL_SESSION_FILE = _BASE_DIR / "session_backfill.session"
+_MONITOR_SESSION_FILE = _BASE_DIR / "session_monitor.session"
+
+
+def _session_path(phone: str) -> Path:
+    _SESSION_DIR.mkdir(parents=True, exist_ok=True)
+    safe_name = hashlib.sha256(phone.strip().encode("utf-8")).hexdigest()
+    return _SESSION_DIR / f"{safe_name}.session"
 
 
 async def request_telegram_code(phone: str) -> str:
@@ -14,22 +24,35 @@ async def request_telegram_code(phone: str) -> str:
     Request Telegram verification code for a phone number.
     Returns the phone number hash for later verification.
     """
-    client = TelegramClient(
-        MemorySession(),
-        config.api_id,
-        config.api_hash,
-        connection_retries=3,
-    )
-    
-    await client.connect()
-    
+    session_path = _session_path(phone)
+
+    async def _send_code() -> str:
+        client = TelegramClient(
+            SQLiteSession(str(session_path)),
+            config.api_id,
+            config.api_hash,
+            connection_retries=3,
+        )
+
+        await client.connect()
+
+        try:
+            result = await client.send_code_request(phone)
+            return result.phone_code_hash
+        finally:
+            await client.disconnect()
+
     try:
-        result = await client.send_code_request(phone)
-        # Store the client for later verification
-        _auth_sessions[phone] = client
-        return result.phone_code_hash
+        return await _send_code()
     except Exception as e:
-        await client.disconnect()
+        # Telethon occasionally asks to restart auth flow; reset local auth session once and retry.
+        if "AuthRestartError" in str(e):
+            if session_path.exists():
+                session_path.unlink()
+            try:
+                return await _send_code()
+            except Exception as retry_e:
+                raise ValueError(f"Failed to request code: {str(retry_e)}")
         raise ValueError(f"Failed to request code: {str(e)}")
 
 
@@ -37,27 +60,37 @@ async def verify_telegram_code(phone: str, code: str, phone_code_hash: str) -> b
     """
     Verify Telegram code and sign in.
     """
-    if phone not in _auth_sessions:
+    session_path = _session_path(phone)
+    if not session_path.exists():
         raise ValueError("No active authentication session for this phone. Request code first.")
-    
-    client = _auth_sessions[phone]
+
+    client = TelegramClient(
+        SQLiteSession(str(session_path)),
+        config.api_id,
+        config.api_hash,
+        connection_retries=3,
+    )
+    await client.connect()
+    verified = False
     
     try:
         await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
-        # Keep client connected after authentication
+        verified = True
         return True
     except SessionPasswordNeededError:
         raise ValueError("2FA is enabled. Not supported yet.")
     except Exception as e:
         raise ValueError(f"Invalid code: {str(e)}")
     finally:
-        # Clean up the session
-        _auth_sessions.pop(phone, None)
+        await client.disconnect()
+        if verified:
+            # Copy only after disconnect so SQLite session is fully flushed.
+            shutil.copy2(session_path, _BACKFILL_SESSION_FILE)
+            shutil.copy2(session_path, _MONITOR_SESSION_FILE)
 
 
 async def disconnect_telegram(phone: str) -> None:
     """Disconnect a Telegram session."""
-    if phone in _auth_sessions:
-        client = _auth_sessions[phone]
-        await client.disconnect()
-        _auth_sessions.pop(phone, None)
+    session_path = _session_path(phone)
+    if session_path.exists():
+        session_path.unlink()
