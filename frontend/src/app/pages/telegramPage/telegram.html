@@ -1,58 +1,65 @@
-<div class="auth-container">
-  <div class="card">
-    <h1>Verify with Telegram</h1>
-    
+<section class="mx-auto w-full max-w-md px-4 py-8 sm:py-12">
+  <div class="w-full">
     @if (!codeRequested()) {
-      <!-- Phone Input -->
-      <form (ngSubmit)="requestCode()">
-        <div class="form-group">
-          <label for="phone">Phone Number</label>
-          <input
-            type="tel"
-            id="phone"
-            [(ngModel)]="phone"
-            name="phone"
-            placeholder="e.g., +48123456789"
-            required
-          />
-        </div>
-        <button type="submit" [disabled]="loading()">
-          {{ loading() ? 'Sending...' : 'Send Code' }}
-        </button>
-        @if (error()) {
-          <div class="error">{{ error() }}</div>
-        }
+      <form (ngSubmit)="requestCode()" class="w-full" novalidate>
+        <fieldset class="fieldset border-base-300 rounded-box w-full border p-5">
+          <legend class="fieldset-legend">Telegram verification</legend>
+
+          <p class="mb-2 text-sm">Enter your phone number with country code.</p>
+
+          <label class="floating-label mt-2">
+            <span>Phone number</span>
+            <input
+              type="tel"
+              [(ngModel)]="phone"
+              name="phone"
+              placeholder="e.g. +48123456789"
+              class="input input-bordered w-full"
+              required
+            />
+          </label>
+
+          <button type="submit" class="btn btn-neutral mt-4 w-full" [disabled]="loading()">
+            {{ loading() ? 'Sending code...' : 'Send verification code' }}
+          </button>
+        </fieldset>
       </form>
     } @else {
-      <!-- Code Input -->
-      <form (ngSubmit)="verifyCode()">
-        <p class="info">Code sent to {{ phone }}. Check your Telegram app.</p>
-        
-        <div class="form-group">
-          <label for="code">Verification Code</label>
-          <input
-            type="text"
-            id="code"
-            [(ngModel)]="code"
-            name="code"
-            placeholder="Enter 5 digit code"
-            maxlength="5"
-            required
-          />
-        </div>
-        
-        <button type="submit" [disabled]="loading()">
-          {{ loading() ? 'Verifying...' : 'Verify Code' }}
-        </button>
-        
-        <button type="button" (click)="backToPhone()" [disabled]="loading()">
-          Back
-        </button>
-        
-        @if (error()) {
-          <div class="error">{{ error() }}</div>
-        }
+      <form (ngSubmit)="verifyCode()" class="w-full" novalidate>
+        <fieldset class="fieldset border-base-300 rounded-box w-full border p-5">
+          <legend class="fieldset-legend">Telegram verification</legend>
+
+          <p class="mb-2 text-sm">Code sent to {{ phone }}.</p>
+
+          <label class="floating-label mt-2">
+            <span>Code (5-6 digits)</span>
+            <input
+              type="text"
+              [(ngModel)]="code"
+              name="code"
+              placeholder="12345"
+              maxlength="6"
+              inputmode="numeric"
+              class="input input-bordered w-full"
+              required
+            />
+          </label>
+
+          <button type="submit" class="btn btn-neutral mt-4 w-full" [disabled]="loading()">
+            {{ loading() ? 'Verifying...' : 'Verify' }}
+          </button>
+
+          <button type="button" class="btn btn-ghost mt-2 w-full" (click)="backToPhone()" [disabled]="loading()">
+            Change number
+          </button>
+        </fieldset>
       </form>
     }
+
+    @if (error()) {
+      <div class="alert alert-error mt-4">
+        <span>{{ error() }}</span>
+      </div>
+    }
   </div>
-</div>
+</section>

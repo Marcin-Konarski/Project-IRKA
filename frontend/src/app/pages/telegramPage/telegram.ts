@@ -9,7 +9,9 @@ import { ApiService } from '../../core/http/apiService';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './telegram.html',
-  styleUrls: ['./telegram.css']
+  host: {
+    class: 'block min-h-[calc(100vh-64px)]'
+  }
 })
 export class TelegramComponent {
   private apiService = inject(ApiService);
