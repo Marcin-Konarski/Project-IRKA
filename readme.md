@@ -21,8 +21,12 @@ https://my.telegram.org/apps
 ```
 and set your app informations, then update .env file with app credentials
 
+# IMPORTANT
+Remember to validate your telegram access on /telegram endpoint, you need to input special code which will be sent to the your telephone number.
+
 to get inside postgres DB, after running docker compose go with
 ```
 docker compose exec -it postgres bash
 psql -U ${POSTGRES_USER} -d ${POSTGRES_DB}
 ```
+
