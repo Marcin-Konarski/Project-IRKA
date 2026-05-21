@@ -48,10 +48,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=config.app_name, lifespan=lifespan)
 
+allowed_origins = list(config.cors_origins or [])
+# Always allow localhost:4200 for frontend development
+dev_origin = "http://localhost:4200"
+if dev_origin not in allowed_origins:
+    allowed_origins.append(dev_origin)
+
 app.add_middleware(
     CORSMiddleware,
     # allow_origin_regex=r"^http://localhost(:\d+)?$",
-    allow_origins=config.cors_origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

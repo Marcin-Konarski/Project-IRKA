@@ -50,3 +50,25 @@ export interface StartBackfillReturnData {
 export interface BackfillRequest {
     channel: string
 }
+
+export interface ChannelCardData {
+    id: number;
+    title: string;
+    channel_name: string;
+    message_count: number;
+    photo?: string | null;
+    creator?: string | null;
+    link?: string | null;
+    created_at?: string | null;
+}
+
+export interface BackfillJobData {
+    id: string;
+    channel_id?: number | null;
+    channel_name: string;
+    status: string;
+    progress_count: number;
+    last_message_id: number;
+    error?: string | null;
+    created_at?: string | null;
+}

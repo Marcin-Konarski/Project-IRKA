@@ -179,6 +179,7 @@ class BackfillWorker:
                 id=entity.id,
                 channel_name=getattr(entity, "username", None) or str(entity.id),
                 title=getattr(entity, "title", ""),
+                created_at=datetime.now(timezone.utc),
             )
             session.add(channel)
         job.channel_id = entity.id

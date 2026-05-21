@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Optional
+from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field, Column, BigInteger, Relationship
 
 if TYPE_CHECKING:
@@ -14,6 +15,7 @@ class Channel(SQLModel, table=True):
     link: str | None = None
     channel_name: str = Field(unique=True, index=True)
     message_count: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     backfill_job: Optional["BackfillJob"] = Relationship(back_populates="channel", cascade_delete=True)
     monitor_job: Optional["MonitorJob"] = Relationship(back_populates="channel", cascade_delete=True)

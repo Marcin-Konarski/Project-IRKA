@@ -4,7 +4,19 @@
     - `w-full` lets it expand to the available width
     - `h-full min-h-0` lets it participate correctly in the app's flex "remaining space" layout
 -->
-<div class="w-full h-full min-h-0 max-w-5xl mx-auto px-4 pt-6 flex flex-col gap-12">
+<div class="w-full h-full min-h-0 max-w-6xl mx-auto px-4 pt-6 flex flex-col gap-10">
+
+    <div class="flex flex-col gap-3 rounded-3xl border border-base-300 bg-gradient-to-br from-base-100 to-base-200/70 p-6 shadow-sm">
+        <p class="text-sm uppercase tracking-[0.35em] text-base-content/50">Channels</p>
+        <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+                <h1 class="text-3xl font-semibold">Observed channels</h1>
+                <p class="max-w-2xl text-sm text-base-content/70">
+                    Add a channel and keep it on this page as a card with its name visible.
+                </p>
+            </div>
+        </div>
+    </div>
 
 
     <!--
@@ -15,7 +27,10 @@
     <div class="ml-auto w-full max-w-xs flex items-center gap-2">
         <!-- `flex-1` makes the input take remaining space next to the square button -->
         <label class="input flex-1 bg-transparent">
-            <svg lucideSearch class="h-[1em] opacity-50"></svg>
+            <svg class="h-[1em] w-[1em] opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+            </svg>
             <input type="search" required placeholder="Search" />
         </label>
 
@@ -24,7 +39,10 @@
             <svg lucidePlus></svg>
         </button> -->
         <app-modal [header]="modalHeader()" [label]="modalLabel()" modalTriggerStyling="btn btn-square shrink-0" (submitted)="addChannel($event)" >
-            <svg lucidePlus></svg>
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+            </svg>
         </app-modal>
     </div>
 
@@ -41,18 +59,20 @@
       - `w-full max-w-md` avoids the "squashed" look and stays responsive
     -->
     <div class="w-full flex justify-center">
-        <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-            <app-card></app-card>
-
-        </div>
+        @if (observedChannels().length > 0) {
+            <div class="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                @for (channel of observedChannels(); track channel.channelName) {
+                    <app-card [channelName]="channel.channelName" [status]="channel.status"></app-card>
+                }
+            </div>
+        } @else {
+            <div class="w-full rounded-3xl border border-dashed border-base-300 bg-base-100/60 p-10 text-center">
+                <p class="text-lg font-medium">No observed channels yet</p>
+                <p class="mt-2 text-sm text-base-content/60">
+                    Add a channel with the button above to see it appear as a card here.
+                </p>
+            </div>
+        }
 
     </div>
 

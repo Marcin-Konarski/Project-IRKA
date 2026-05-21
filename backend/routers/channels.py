@@ -10,6 +10,7 @@ from ..models import Message, BackfillJob, Channel
 # from ..core.security import get_user_and_session
 from ..core.queue import JobQueue
 from ..core.subscribers import SubscribersQueue
+from ..core.channel_utils import normalize_telegram_channel_reference
 
 
 router = APIRouter(tags=["core"])
@@ -17,8 +18,7 @@ router = APIRouter(tags=["core"])
 
 @router.post("/backfill-jobs", status_code=status.HTTP_201_CREATED)
 async def start_backfill(body: Annotated[ChannelRequest, Body()], session: SessionDep):
-
-    job = BackfillJob(channel_name=body.channel)
+    job = BackfillJob(channel_name=normalize_telegram_channel_reference(body.channel))
 
     session.add(job)
     session.commit()
@@ -57,6 +57,18 @@ async def get_job_progress(job_id: Annotated[UUID, Path()], session: SessionDep)
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
+
+
+@router.get("/backfill-jobs", status_code=status.HTTP_200_OK)
+async def list_backfill_jobs(session: SessionDep):
+    jobs = session.exec(select(BackfillJob)).all()
+    return jobs
+
+
+@router.get("/channels", response_model=list[Channel], status_code=status.HTTP_200_OK)
+async def get_channels(session: SessionDep):
+    channels = session.exec(select(Channel)).all()
+    return channels
 
 
 @router.get("/channels/{channel_id}/messages", status_code=status.HTTP_200_OK)

@@ -2,13 +2,13 @@ import re
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from psycopg2.errors import UniqueViolation
 
 from .session import SessionDep
-from ..models import User, Message
+from ..models import User, Message, Channel
 
 
 def _parse_postgres_duplicate_key(error: IntegrityError) -> tuple[str | None, str | None]:
@@ -78,9 +78,27 @@ def get_user_by_username(session: SessionDep, username: str) -> User:
 
 
 def insert_messages(session: SessionDep, rows: list[dict]):
+    if not rows:
+        return
+
+    channel_ids = {row["channel_id"] for row in rows if "channel_id" in row}
+
     stmt = insert(Message).values(rows)
     stmt = stmt.on_conflict_do_nothing(index_elements=["channel_id", "message_id"])
     session.exec(stmt)
-    # session.commit()
 
+    if not channel_ids:
+        return
 
+    counts = session.exec(
+        select(Message.channel_id, func.count(Message.id))
+        .where(Message.channel_id.in_(channel_ids))
+        .group_by(Message.channel_id)
+    ).all()
+
+    counts_by_channel = {channel_id: count for channel_id, count in counts}
+
+    for channel_id in channel_ids:
+        channel = session.get(Channel, channel_id)
+        if channel:
+            channel.message_count = int(counts_by_channel.get(channel_id, 0))

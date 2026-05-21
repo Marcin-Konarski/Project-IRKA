@@ -16,6 +16,7 @@ export class streamService {
 
             source.onmessage = (event) => {
                 try {
+                    console.log("SSE message:", url, event.data);
                     observer.next(JSON.parse(event.data) as T);
                 } catch (e) {
                     observer.error(e);
@@ -23,6 +24,7 @@ export class streamService {
             };
 
             source.onerror = (error) => {
+                console.error("SSE error:", url, error);
                 observer.error(error);
                 source.close();
             };

@@ -3,7 +3,7 @@ import { inject, Injectable } from "@angular/core";
 import { firstValueFrom } from "rxjs";
 
 import { ApiResult, LoginData, LoginResponseBody, RegisterData, RegisterResponseBody,
-        StartBackfillReturnData, BackfillRequest } from "../../types";
+    StartBackfillReturnData, BackfillRequest, ChannelCardData, BackfillJobData } from "../../types";
 
 export interface TelegramCodeRequest {
     phone: string;
@@ -41,6 +41,20 @@ export class ApiService {
         }
     };
 
+    private async apiGetTemplate<TRes>(path: string): Promise<ApiResult<TRes>> {
+        const url = `${this.baseURL}${path}`;
+
+        try {
+            const response = await firstValueFrom(
+                this.http.get<TRes>(url, { observe: "response", timeout: 5000 })
+            );
+            return { ok: true, response };
+        } catch (e) {
+            const error = e as HttpErrorResponse;
+            return { ok: false, error };
+        }
+    };
+
     async register(body: RegisterData) {
         return await this.apiPostTemplate<RegisterData, RegisterResponseBody>("/auth/signup", body);
     }
@@ -51,6 +65,14 @@ export class ApiService {
 
     async startBackfill(body: BackfillRequest) {
         return await this.apiPostTemplate<BackfillRequest, StartBackfillReturnData>("/backfill-jobs", body);
+    }
+
+    async getChannels() {
+        return await this.apiGetTemplate<ChannelCardData[]>("/channels");
+    }
+
+    async getBackfillJobs() {
+        return await this.apiGetTemplate<BackfillJobData[]>("/backfill-jobs");
     }
 
     async requestTelegramCode(phone: string) {
