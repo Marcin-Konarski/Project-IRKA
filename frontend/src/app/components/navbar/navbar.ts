@@ -1,5 +1,5 @@
 import { Component, inject, signal } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 
 import { NavButtons } from "../../types";
 import { UserState } from "../../core/state/userState";
@@ -13,6 +13,7 @@ import { UserState } from "../../core/state/userState";
 })
 export class Navbar {
     state = inject(UserState);
+    private router = inject(Router);
     username = this.state.username;
     isLoggedIn = this.state.isLoggedIn;
 
@@ -21,25 +22,20 @@ export class Navbar {
     dropdownButtonsList: NavButtons[] = [
         {
             id: 1,
-            name: "Home",
-            url: "/home"
-        },
-        {
-            id: 2,
             name: "Channels",
             url: "/channels"
         },
         {
-            id: 3,
+            id: 2,
             name: "Telegram",
             url: "/telegram"
         },
-        {
-            id: 4,
-            name: "Bomba",
-            url: "/bomba"
-        },
     ];
+
+    logout() {
+        this.state.clearUser();
+        void this.router.navigate(['/login']);
+    }
 
 
 }

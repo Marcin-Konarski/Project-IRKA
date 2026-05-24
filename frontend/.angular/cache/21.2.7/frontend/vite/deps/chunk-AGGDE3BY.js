@@ -1,13 +1,28 @@
 import {
   Injectable,
   setClassMetadata
-} from "./chunk-DYZGBW2N.js";
+} from "./chunk-KIOVCGM2.js";
 import {
   DOCUMENT,
   InjectionToken,
   inject,
   ɵɵdefineInjectable
-} from "./chunk-WEZI6ZPH.js";
+} from "./chunk-7SSU554M.js";
+
+// node_modules/@angular/common/fesm2022/_xhr-chunk.mjs
+function parseCookieValue(cookieStr, name) {
+  name = encodeURIComponent(name);
+  for (const cookie of cookieStr.split(";")) {
+    const eqIndex = cookie.indexOf("=");
+    const [cookieName, cookieValue] = eqIndex == -1 ? [cookie, ""] : [cookie.slice(0, eqIndex), cookie.slice(eqIndex + 1)];
+    if (cookieName.trim() === name) {
+      return decodeURIComponent(cookieValue);
+    }
+  }
+  return null;
+}
+var XhrFactory = class {
+};
 
 // node_modules/@angular/common/fesm2022/_platform_location-chunk.mjs
 var _DOM = null;
@@ -125,29 +140,14 @@ var BrowserPlatformLocation = class _BrowserPlatformLocation extends PlatformLoc
   }], () => [], null);
 })();
 
-// node_modules/@angular/common/fesm2022/_xhr-chunk.mjs
-function parseCookieValue(cookieStr, name) {
-  name = encodeURIComponent(name);
-  for (const cookie of cookieStr.split(";")) {
-    const eqIndex = cookie.indexOf("=");
-    const [cookieName, cookieValue] = eqIndex == -1 ? [cookie, ""] : [cookie.slice(0, eqIndex), cookie.slice(eqIndex + 1)];
-    if (cookieName.trim() === name) {
-      return decodeURIComponent(cookieValue);
-    }
-  }
-  return null;
-}
-var XhrFactory = class {
-};
-
 export {
+  parseCookieValue,
+  XhrFactory,
   getDOM,
   setRootDomAdapter,
   DomAdapter,
   PlatformLocation,
   LOCATION_INITIALIZED,
-  BrowserPlatformLocation,
-  parseCookieValue,
-  XhrFactory
+  BrowserPlatformLocation
 };
-//# sourceMappingURL=chunk-DCYJ5UHQ.js.map
+//# sourceMappingURL=chunk-AGGDE3BY.js.map

@@ -3,7 +3,7 @@ import { inject, Injectable } from "@angular/core";
 import { firstValueFrom } from "rxjs";
 
 import { ApiResult, LoginData, LoginResponseBody, RegisterData, RegisterResponseBody,
-    StartBackfillReturnData, BackfillRequest, ChannelCardData, BackfillJobData, ChannelMessageData } from "../../types";
+    StartBackfillReturnData, BackfillRequest, ChannelCardData, BackfillJobData, ChannelMessageData, ProfileStatsData } from "../../types";
 
 export interface TelegramCodeRequest {
     phone: string;
@@ -77,6 +77,10 @@ export class ApiService {
 
     async getBackfillJobs() {
         return await this.apiGetTemplate<BackfillJobData[]>("/backfill-jobs");
+    }
+
+    async getProfileStats() {
+        return await this.apiGetTemplate<ProfileStatsData>("/profile/stats");
     }
 
     async requestTelegramCode(phone: string) {

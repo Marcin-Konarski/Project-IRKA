@@ -36,14 +36,14 @@ def login_user(user: Annotated[UserRequest, Body()], session: SessionDep) -> Any
 
 
 # Get informations about currently logged in user
-@router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
+@router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(get_user_and_session)])
 def get_user_info(session_and_user: tuple[User, SessionDep] = Depends(get_user_and_session)) -> Any:
     current_user, session = session_and_user
     return current_user
 
 
 # Telegram authentication
-@router.post("/telegram/request", response_model=TelegramCodeResponse, status_code=status.HTTP_200_OK)
+@router.post("/telegram/request", response_model=TelegramCodeResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(get_user_and_session)])
 async def request_telegram_auth(request: Annotated[TelegramCodeRequest, Body()]) -> Any:
     """Request Telegram verification code."""
     try:
@@ -56,7 +56,7 @@ async def request_telegram_auth(request: Annotated[TelegramCodeRequest, Body()])
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/telegram/verify", status_code=status.HTTP_200_OK)
+@router.post("/telegram/verify", status_code=status.HTTP_200_OK, dependencies=[Depends(get_user_and_session)])
 async def verify_telegram_auth(verify: Annotated[TelegramCodeVerify, Body()]) -> Any:
     """Verify Telegram code and authenticate."""
     try:

@@ -81,3 +81,15 @@ export interface BackfillJobData {
     error?: string | null;
     created_at?: string | null;
 }
+
+export interface ProfileChannelStat {
+    id: number;
+    title: string;
+    channel_name: string;
+    message_count: number;
+}
+
+export interface ProfileStatsData {
+    channels_count: number;
+    channels_sorted_by_messages: ProfileChannelStat[];
+}

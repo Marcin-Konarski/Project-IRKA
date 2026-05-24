@@ -1,19 +1,19 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, status, Path, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Path, Body
 from fastapi.responses import StreamingResponse
 from sqlmodel import select
 
 from ..schemas.channel import ChannelRequest
 from ..db.session import SessionDep
 from ..models import Message, BackfillJob, Channel
-# from ..core.security import get_user_and_session
+from ..core.security import get_user_and_session
 from ..core.queue import JobQueue
 from ..core.subscribers import SubscribersQueue
 from ..core.channel_utils import normalize_telegram_channel_reference
 
 
-router = APIRouter(tags=["core"])
+router = APIRouter(tags=["core"], dependencies=[Depends(get_user_and_session)])
 
 
 @router.post("/backfill-jobs", status_code=status.HTTP_201_CREATED)
@@ -92,3 +92,25 @@ async def subscribe_to_channel(channel_id: Annotated[int, Path()], session: Sess
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
+
+
+@router.get("/profile/stats", status_code=status.HTTP_200_OK)
+async def get_profile_stats(session: SessionDep):
+    channels = session.exec(
+        select(Channel).order_by(Channel.message_count.desc(), Channel.channel_name.asc())
+    ).all()
+
+    channels_sorted_by_messages = [
+        {
+            "id": channel.id,
+            "title": channel.title,
+            "channel_name": channel.channel_name,
+            "message_count": channel.message_count,
+        }
+        for channel in channels
+    ]
+
+    return {
+        "channels_count": len(channels_sorted_by_messages),
+        "channels_sorted_by_messages": channels_sorted_by_messages,
+    }

@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { JobStatusStreamData } from '../../types';
+import { UserState } from '../state/userState';
 
 
 
@@ -9,6 +10,7 @@ import { JobStatusStreamData } from '../../types';
 })
 export class streamService {
     private baseURL = 'http://localhost:8000';
+    private userState = inject(UserState);
 
     private streamServiceTemplate<T>(url: string): Observable<T> {
         return new Observable<T>(observer => {
@@ -35,7 +37,9 @@ export class streamService {
 
 
     streamJobStatus(jobId:string): Observable<JobStatusStreamData> {
-        const url = `${this.baseURL}/backfill-jobs/${jobId}/events`;
+        const token = this.userState.accessToken();
+        const query = token ? `?access_token=${encodeURIComponent(token)}` : "";
+        const url = `${this.baseURL}/backfill-jobs/${jobId}/events${query}`;
         console.log("url:", url)
         return this.streamServiceTemplate<JobStatusStreamData>(url);
     };

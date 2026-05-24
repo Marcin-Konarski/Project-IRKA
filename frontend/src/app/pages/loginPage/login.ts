@@ -22,11 +22,16 @@ export class LoginPage {
     api = inject(ApiService);
     state = inject(UserState);
     showAlert = signal(false);
+    showAuthRequiredAlert = signal(false);
     showErrorAlert = signal<ErrorAlert>({errors: false, message: ''});
+    private redirectTo = '/channels';
 
     constructor() {
         this.route.queryParams.subscribe((params) => {
             this.showAlert.set(params['showAlert'] === 'true');
+            this.showAuthRequiredAlert.set(params['authRequired'] === 'true');
+            const redirectValue = typeof params['redirectTo'] === 'string' ? params['redirectTo'] : '';
+            this.redirectTo = redirectValue.startsWith('/') ? redirectValue : '/channels';
         });
     };
 
@@ -40,6 +45,7 @@ export class LoginPage {
     async onSubmit() {
         const formData = this.loginModel();
         this.showAlert.set(false);
+        this.showAuthRequiredAlert.set(false);
         this.showErrorAlert.set({ errors: false, message: "" });
 
         const response = await this.api.login(formData);
@@ -52,7 +58,7 @@ export class LoginPage {
 
             this.state.setUser(formData.username, token); // TODO: make backend return here username in body as well and get username from response instead of formData
             this.loginForm().reset(this.loginFormData);
-            this.router.navigate(['/'], { queryParams: { showLoginAlert: true } });
+            this.router.navigateByUrl(this.redirectTo);
         } else {
             const error = response?.error;
             const detail = (error?.error as any)?.detail;

@@ -3,7 +3,7 @@ from typing import Annotated, Tuple
 
 import jwt
 from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pwdlib import PasswordHash
 
@@ -16,7 +16,7 @@ from ..models import User
 
 password_hash = PasswordHash.recommended()
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def verify_password(plain_password, hashed_password) -> bool:
@@ -48,13 +48,20 @@ def authenticate_user(session: SessionDep, username: str, password: str) -> str:
     return access_token
 
 
-def get_user_and_session(credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)], session: SessionDep) -> Tuple[User, SessionDep]:
-    token = credentials.credentials
+def get_user_and_session(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    session: SessionDep,
+    access_token: Annotated[str | None, Query(alias="access_token")] = None,
+) -> Tuple[User, SessionDep]:
+    token = credentials.credentials if credentials else access_token
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if token is None:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
