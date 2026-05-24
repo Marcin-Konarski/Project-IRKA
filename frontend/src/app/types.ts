@@ -62,6 +62,15 @@ export interface ChannelCardData {
     created_at?: string | null;
 }
 
+export interface ChannelMessageData {
+    id: number;
+    channel_id: number;
+    message_id: number;
+    text: string;
+    sender_id?: number | null;
+    date: string;
+}
+
 export interface BackfillJobData {
     id: string;
     channel_id?: number | null;

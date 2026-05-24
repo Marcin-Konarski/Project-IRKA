@@ -12,32 +12,28 @@
             <div>
                 <h1 class="text-3xl font-semibold">Observed channels</h1>
                 <p class="max-w-2xl text-sm text-base-content/70">
-                    Add a channel and keep it on this page as a card with its name visible.
+                    Search messages across the channels visible on this page.
                 </p>
             </div>
         </div>
     </div>
 
-
-    <!--
-      Search row:
-      - `ml-auto` pushes the row to the right
-      - `w-full max-w-md` makes it responsive: full width on small screens, capped on larger ones
-    -->
     <div class="ml-auto w-full max-w-xs flex items-center gap-2">
-        <!-- `flex-1` makes the input take remaining space next to the square button -->
         <label class="input flex-1 bg-transparent">
             <svg class="h-[1em] w-[1em] opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="7"></circle>
                 <path d="m21 21-4.3-4.3"></path>
             </svg>
-            <input type="search" required placeholder="Search" />
+            <input
+                #messageSearchInput
+                type="search"
+                required
+                placeholder="Search messages"
+                [value]="searchQuery()"
+                (input)="searchQuery.set(messageSearchInput.value)"
+            />
         </label>
 
-        <!-- `shrink-0` prevents the square button from getting compressed -->
-        <!-- <button class="btn btn-square shrink-0" (click)="addChannel()">
-            <svg lucidePlus></svg>
-        </button> -->
         <app-modal [header]="modalHeader()" [label]="modalLabel()" modalTriggerStyling="btn btn-square shrink-0" (submitted)="addChannel($event)" >
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 5v14"></path>
@@ -46,18 +42,48 @@
         </app-modal>
     </div>
 
+    @if (searchQuery().trim().length > 0) {
+        <section class="space-y-4">
+            <div class="flex items-end justify-between gap-4">
+                <div>
+                    <p class="text-sm uppercase tracking-[0.35em] text-base-content/50">Message results</p>
+                    <h2 class="text-2xl font-semibold">Matching messages</h2>
+                </div>
+                <p class="text-sm text-base-content/60">{{ filteredMessages().length }} result(s)</p>
+            </div>
 
+            @if (filteredMessages().length > 0) {
+                <div class="grid gap-4">
+                    @for (message of filteredMessages(); track message.key) {
+                        <article class="rounded-3xl border border-base-300 bg-base-100/80 p-5 shadow-lg backdrop-blur">
+                            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                <div class="min-w-0">
+                                    <p class="text-xs uppercase tracking-[0.3em] text-base-content/50">Channel</p>
+                                    <h3 class="mt-2 break-words text-xl font-semibold leading-tight">{{ message.channelName }}</h3>
+                                    <p class="mt-1 text-sm text-base-content/60">{{ message.channelTitle }}</p>
+                                </div>
+                                @if (message.dateLabel) {
+                                    <span class="badge badge-outline badge-primary shrink-0 whitespace-nowrap">{{ message.dateLabel }}</span>
+                                }
+                            </div>
 
+                            <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-base-content/80">
+                                {{ message.text }}
+                            </p>
+                        </article>
+                    }
+                </div>
+            } @else {
+                <div class="rounded-3xl border border-dashed border-base-300 bg-base-100/60 p-10 text-center">
+                    <p class="text-lg font-medium">No matching messages</p>
+                    <p class="mt-2 text-sm text-base-content/60">
+                        Try another keyword or search by channel name.
+                    </p>
+                </div>
+            }
+        </section>
+    }
 
-
-
-
-
-    <!--
-      Card section:
-      - `flex justify-center` centers the card under the search row (vertically stacked)
-      - `w-full max-w-md` avoids the "squashed" look and stays responsive
-    -->
     <div class="w-full flex justify-center">
         @if (observedChannels().length > 0) {
             <div class="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

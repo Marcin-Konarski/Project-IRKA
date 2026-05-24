@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from "@angular/core";
+import { Component, DestroyRef, computed, inject, signal } from "@angular/core";
 
 import { Card } from "../../components/card/card";
 import { ApiService } from "../../core/http/apiService";
@@ -6,11 +6,23 @@ import { streamService } from "../../core/http/streamService";
 import { takeWhile, tap } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Modal } from "../../components/modal/modal";
-import { JobStatusStreamData, ChannelCardData } from "../../types";
+import { JobStatusStreamData, ChannelCardData, ChannelMessageData } from "../../types";
 type ObservedChannel = {
     channelName: string;
     status: string;
     ts: number; // timestamp for sorting (ms since epoch)
+    id?: number;
+    title?: string;
+};
+
+type SearchMessage = {
+    key: string;
+    channelName: string;
+    channelTitle: string;
+    text: string;
+    dateLabel: string;
+    ts: number;
+    searchIndex: string;
 };
 
 function normalizeChannelName(channelName: string): string {
@@ -38,6 +50,10 @@ function channelKey(channelName: string): string {
     return normalizeChannelName(channelName).toLowerCase();
 }
 
+function normalizeSearchQuery(value: string): string {
+    return value.trim().toLowerCase();
+}
+
 
 @Component({
     standalone: true,
@@ -53,6 +69,17 @@ export class ChannelsPage {
     stream = inject(streamService);
     private destroyRef = inject(DestroyRef);
     observedChannels = signal<ObservedChannel[]>([]);
+    searchQuery = signal("");
+    visibleMessages = signal<SearchMessage[]>([]);
+    filteredMessages = computed(() => {
+        const query = normalizeSearchQuery(this.searchQuery());
+
+        if (!query) {
+            return [];
+        }
+
+        return this.visibleMessages().filter(message => message.searchIndex.includes(query));
+    });
     // Modal related stuff:
     modalHeader = signal("Add new channel");
     modalLabel = signal("channel name");
@@ -98,7 +125,11 @@ export class ChannelsPage {
             const current = currentMap.get(key) ?? mergedMap.get(key);
 
             if (current) {
-                mergedMap.set(key, current);
+                mergedMap.set(key, {
+                    ...current,
+                    id: ch.id,
+                    title: ch.title,
+                });
                 continue;
             }
 
@@ -106,11 +137,57 @@ export class ChannelsPage {
                 channelName: normalizeChannelName(ch.channel_name),
                 status: ch.message_count > 0 ? `${ch.message_count} messages` : 'observed',
                 ts: ch.created_at ? new Date(ch.created_at).getTime() : 0,
+                id: ch.id,
+                title: ch.title,
             });
         }
 
-        this.observedChannels.set(
-            [...mergedMap.values()].sort((a, b) => b.ts - a.ts).slice(0, 10)
+        const visibleChannels = [...mergedMap.values()].sort((a, b) => b.ts - a.ts).slice(0, 10);
+        this.observedChannels.set(visibleChannels);
+
+        await this.loadVisibleMessages(visibleChannels);
+    }
+
+    async loadVisibleMessages(channels: ObservedChannel[]) {
+        const channelsWithIds = channels.filter((channel): channel is ObservedChannel & { id: number } => typeof channel.id === "number");
+
+        if (channelsWithIds.length === 0) {
+            this.visibleMessages.set([]);
+            return;
+        }
+
+        const messageResults = await Promise.all(
+            channelsWithIds.map(async channel => {
+                const response = await this.http.getChannelMessages(channel.id);
+
+                if (!response.ok) {
+                    console.error(`Failed to load messages for channel ${channel.channelName}:`, response.error);
+                    return [];
+                }
+
+                const messages: ChannelMessageData[] = response.response.body ?? [];
+
+                return messages.map(message => {
+                    const text = message.text?.trim() || "No text available";
+                    const dateLabel = message.date ? new Date(message.date).toLocaleString() : "";
+                    const channelTitle = channel.title?.trim() || channel.channelName;
+                    const searchIndex = normalizeSearchQuery([channel.channelName, channelTitle, text].join(" "));
+
+                    return {
+                        key: `${channel.id}:${message.message_id}`,
+                        channelName: channel.channelName,
+                        channelTitle,
+                        text,
+                        dateLabel,
+                        ts: message.date ? new Date(message.date).getTime() : 0,
+                        searchIndex,
+                    };
+                });
+            })
+        );
+
+        this.visibleMessages.set(
+            messageResults.flat().sort((a, b) => b.ts - a.ts)
         );
     }
 
@@ -149,6 +226,10 @@ export class ChannelsPage {
             tap((value: JobStatusStreamData) => {
                 console.log("Backfill progress:", normalizedChannelName, value);
                 this.upsertObservedChannel(normalizedChannelName, value.status);
+
+                if (value.status === "done") {
+                    void this.loadObservedChannels();
+                }
             }),
             takeWhile((value: JobStatusStreamData) => value.status !== "done" && value.status !== 'failed', true),
             takeUntilDestroyed(this.destroyRef),

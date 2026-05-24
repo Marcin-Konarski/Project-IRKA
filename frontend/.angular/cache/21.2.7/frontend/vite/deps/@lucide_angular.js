@@ -26,18 +26,19 @@ import {
   ɵɵtext,
   ɵɵtextInterpolate,
   ɵɵviewQuerySignal
-} from "./chunk-KIOVCGM2.js";
+} from "./chunk-DYZGBW2N.js";
 import {
   InjectionToken,
   computed,
   effect,
   inject,
   signal
-} from "./chunk-7SSU554M.js";
+} from "./chunk-WEZI6ZPH.js";
+import "./chunk-F77N3ZJV.js";
 import {
   __spreadProps,
   __spreadValues
-} from "./chunk-PJVWDKLX.js";
+} from "./chunk-4FRP4S3T.js";
 
 // node_modules/@lucide/angular/fesm2022/lucide-angular.mjs
 var _c0 = ["contentRef"];
