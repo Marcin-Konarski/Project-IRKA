@@ -16,6 +16,8 @@ class Message(SQLModel, table=True):
     channel_id: int = Field(sa_column=Column(BigInteger, ForeignKey("channel.id"), index=True))
     message_id: int = Field(sa_column=Column(BigInteger))
     text: str = Field(default="")
+    media_url: str | None = None
+    media_type: str | None = None
     sender_id: int | None = Field(default=None, sa_column=Column(BigInteger, nullable=True))
     date: datetime = Field(index=True)
 

@@ -1,10 +1,11 @@
-import { Component, DestroyRef, computed, inject, signal } from "@angular/core";
+import { Component, DestroyRef, computed, effect, inject, signal } from "@angular/core";
 
 import { Card } from "../../components/card/card";
 import { ApiService } from "../../core/http/apiService";
 import { streamService } from "../../core/http/streamService";
 import { takeWhile, tap } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { ActivatedRoute, Router } from "@angular/router";
 import { Modal } from "../../components/modal/modal";
 import { JobStatusStreamData, ChannelCardData, ChannelMessageData } from "../../types";
 type ObservedChannel = {
@@ -20,9 +21,19 @@ type SearchMessage = {
     channelName: string;
     channelTitle: string;
     text: string;
+    mediaUrl?: string;
+    mediaType?: string;
     dateLabel: string;
     ts: number;
     searchIndex: string;
+};
+
+type GroupedSearchResult = {
+    channelKey: string;
+    channelName: string;
+    channelTitle: string;
+    latestTs: number;
+    messages: SearchMessage[];
 };
 
 function normalizeChannelName(channelName: string): string {
@@ -67,9 +78,14 @@ function normalizeSearchQuery(value: string): string {
 export class ChannelsPage {
     http = inject(ApiService);
     stream = inject(streamService);
+    route = inject(ActivatedRoute);
+    router = inject(Router);
     private destroyRef = inject(DestroyRef);
     observedChannels = signal<ObservedChannel[]>([]);
+    deletingChannelId = signal<number | null>(null);
     searchQuery = signal("");
+    currentPage = signal(1);
+    readonly pageSize = 10;
     visibleMessages = signal<SearchMessage[]>([]);
     filteredMessages = computed(() => {
         const query = normalizeSearchQuery(this.searchQuery());
@@ -80,12 +96,121 @@ export class ChannelsPage {
 
         return this.visibleMessages().filter(message => message.searchIndex.includes(query));
     });
+    groupedFilteredMessages = computed(() => {
+        const grouped = new Map<string, GroupedSearchResult>();
+
+        for (const message of this.filteredMessages()) {
+            const key = channelKey(message.channelName);
+            const current = grouped.get(key);
+
+            if (!current) {
+                grouped.set(key, {
+                    channelKey: key,
+                    channelName: message.channelName,
+                    channelTitle: message.channelTitle,
+                    latestTs: message.ts,
+                    messages: [message],
+                });
+                continue;
+            }
+
+            current.messages.push(message);
+            if (message.ts > current.latestTs) {
+                current.latestTs = message.ts;
+            }
+        }
+
+        return [...grouped.values()]
+            .map(group => ({
+                ...group,
+                messages: group.messages.sort((a, b) => b.ts - a.ts),
+            }))
+            .sort((a, b) => b.latestTs - a.latestTs);
+    });
+    totalPages = computed(() => {
+        const total = this.groupedFilteredMessages().length;
+        return Math.max(1, Math.ceil(total / this.pageSize));
+    });
+    paginatedChannelResults = computed(() => {
+        const page = this.currentPage();
+        const start = (page - 1) * this.pageSize;
+        return this.groupedFilteredMessages().slice(start, start + this.pageSize);
+    });
     // Modal related stuff:
     modalHeader = signal("Add new channel");
     modalLabel = signal("channel name");
 
     constructor() {
+        this.route.queryParamMap
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(params => {
+                const query = params.get("q") ?? "";
+                const page = this.parsePageParam(params.get("page"));
+
+                if (query !== this.searchQuery()) {
+                    this.searchQuery.set(query);
+                }
+
+                if (page !== this.currentPage()) {
+                    this.currentPage.set(page);
+                }
+            });
+
+        effect(() => {
+            const page = this.currentPage();
+            const maxPage = this.totalPages();
+            if (page > maxPage) {
+                this.currentPage.set(maxPage);
+            }
+            if (page < 1) {
+                this.currentPage.set(1);
+            }
+        });
+
+        effect(() => {
+            const query = this.searchQuery().trim();
+            const page = this.currentPage();
+
+            const currentUrlQuery = this.route.snapshot.queryParamMap.get("q") ?? "";
+            const currentUrlPage = this.parsePageParam(this.route.snapshot.queryParamMap.get("page"));
+
+            if (query === currentUrlQuery && page === currentUrlPage) {
+                return;
+            }
+
+            void this.router.navigate([], {
+                relativeTo: this.route,
+                queryParams: {
+                    q: query || null,
+                    page: page > 1 ? page : null,
+                },
+                queryParamsHandling: "merge",
+                replaceUrl: true,
+            });
+        });
+
         void this.loadObservedChannels();
+    }
+
+    private parsePageParam(value: string | null): number {
+        const parsed = Number(value);
+        if (!Number.isInteger(parsed) || parsed < 1) {
+            return 1;
+        }
+        return parsed;
+    }
+
+    onSearchInput(value: string) {
+        this.searchQuery.set(value);
+        this.currentPage.set(1);
+    }
+
+    goToPreviousPage() {
+        this.currentPage.update(value => Math.max(1, value - 1));
+    }
+
+    goToNextPage() {
+        this.currentPage.update(value => Math.min(this.totalPages(), value + 1));
     }
 
     async loadObservedChannels() {
@@ -171,13 +296,15 @@ export class ChannelsPage {
                     const text = message.text?.trim() || "No text available";
                     const dateLabel = message.date ? new Date(message.date).toLocaleString() : "";
                     const channelTitle = channel.title?.trim() || channel.channelName;
-                    const searchIndex = normalizeSearchQuery([channel.channelName, channelTitle, text].join(" "));
+                    const searchIndex = normalizeSearchQuery(text);
 
                     return {
                         key: `${channel.id}:${message.message_id}`,
                         channelName: channel.channelName,
                         channelTitle,
                         text,
+                        mediaUrl: message.media_url ?? undefined,
+                        mediaType: message.media_type ?? undefined,
                         dateLabel,
                         ts: message.date ? new Date(message.date).getTime() : 0,
                         searchIndex,
@@ -243,6 +370,32 @@ export class ChannelsPage {
                 this.upsertObservedChannel(normalizedChannelName, 'done');
             },
         });
+    }
+
+    async deleteChannel(channel: ObservedChannel) {
+        if (typeof channel.id !== "number") {
+            return;
+        }
+
+        this.deletingChannelId.set(channel.id);
+
+        const response = await this.http.deleteChannel(channel.id);
+        if (!response.ok) {
+            console.error(`Failed to delete channel ${channel.channelName}:`, response.error);
+            this.deletingChannelId.set(null);
+            return;
+        }
+
+        this.observedChannels.update(current =>
+            current.filter(item => item.id !== channel.id)
+        );
+
+        this.visibleMessages.update(current =>
+            current.filter(message => message.channelName !== channel.channelName)
+        );
+
+        this.deletingChannelId.set(null);
+        await this.loadObservedChannels();
     }
 
 

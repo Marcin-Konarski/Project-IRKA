@@ -55,6 +55,20 @@ export class ApiService {
         }
     };
 
+    private async apiDeleteTemplate<TRes>(path: string): Promise<ApiResult<TRes>> {
+        const url = `${this.baseURL}${path}`;
+
+        try {
+            const response = await firstValueFrom(
+                this.http.delete<TRes>(url, { observe: "response", timeout: 5000 })
+            );
+            return { ok: true, response };
+        } catch (e) {
+            const error = e as HttpErrorResponse;
+            return { ok: false, error };
+        }
+    };
+
     async register(body: RegisterData) {
         return await this.apiPostTemplate<RegisterData, RegisterResponseBody>("/auth/signup", body);
     }
@@ -81,6 +95,10 @@ export class ApiService {
 
     async getProfileStats() {
         return await this.apiGetTemplate<ProfileStatsData>("/profile/stats");
+    }
+
+    async deleteChannel(channelId: number) {
+        return await this.apiDeleteTemplate<null>(`/channels/${channelId}`);
     }
 
     async requestTelegramCode(phone: string) {

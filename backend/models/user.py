@@ -1,5 +1,9 @@
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
-from sqlmodel import SQLModel, VARCHAR, Column, Field
+from sqlmodel import SQLModel, VARCHAR, Column, Field, Relationship
+
+if TYPE_CHECKING:
+    from .observed_channel import ObservedChannel
 
 
 
@@ -8,4 +12,6 @@ class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     username: str = Field(sa_column=Column("username", VARCHAR, unique=True))
     password: str
+
+    observed_channels: list["ObservedChannel"] = Relationship(back_populates="owner")
 

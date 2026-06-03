@@ -27,7 +27,9 @@
           <a class="btn btn-ghost btn-sm rounded-xl" routerLink="register">Sign Up</a>
         } @else {
           <div class="flex items-center gap-2">
-            <a class="btn btn-ghost btn-sm rounded-full" routerLink="profile">{{ username() }}</a>
+            @if (showUsername()) {
+              <a class="btn btn-ghost btn-sm rounded-full" routerLink="profile">{{ username() }}</a>
+            }
             <button type="button" class="btn btn-outline btn-sm rounded-full" (click)="logout()">Logout</button>
           </div>
         }

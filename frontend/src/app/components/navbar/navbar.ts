@@ -1,4 +1,4 @@
-import { Component, inject, signal } from "@angular/core";
+import { Component, computed, inject, signal } from "@angular/core";
 import { Router, RouterLink } from "@angular/router";
 
 import { NavButtons } from "../../types";
@@ -16,6 +16,7 @@ export class Navbar {
     private router = inject(Router);
     username = this.state.username;
     isLoggedIn = this.state.isLoggedIn;
+    showUsername = computed(() => this.isLoggedIn() && this.username().trim().length > 0);
 
     mainButtonText = signal('IRKA');
 

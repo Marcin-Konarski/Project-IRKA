@@ -86,6 +86,28 @@ class MonitorWorker:
     def list_monitors(self) -> list[str]:
         return [name for name, task in self._active_monitors.items() if not task.done()]
 
+    def _build_media_link(self, message: TgMessage, channel: Channel) -> tuple[str | None, str | None]:
+        if not getattr(message, "media", None):
+            return None, None
+
+        media_type = "media"
+        if getattr(message, "photo", None):
+            media_type = "photo"
+        elif getattr(message, "video", None):
+            media_type = "video"
+        elif getattr(message, "document", None):
+            media_type = "document"
+
+        username = getattr(channel, "username", None)
+        if username:
+            return f"https://t.me/{username}/{message.id}", media_type
+
+        channel_id = getattr(channel, "id", None)
+        if channel_id:
+            return f"https://t.me/c/{channel_id}/{message.id}", media_type
+
+        return None, media_type
+
     async def run_monitor_job(self, session_factory, channel_name: str, channel: Channel) -> None:
         client = await self.get_client()
 
@@ -97,11 +119,14 @@ class MonitorWorker:
             # Telegram prefixes channel IDs with -100, strip it to get the bare ID
             raw_chat_id = event.chat_id
             normalized_channel_id = int(str(raw_chat_id).lstrip("-100")) if raw_chat_id < 0 else raw_chat_id
+            media_url, media_type = self._build_media_link(message, channel)
 
             row = {
                 "channel_id": normalized_channel_id,
                 "message_id": message.id,
                 "text": message.text or "",
+                "media_url": media_url,
+                "media_type": media_type,
                 "sender_id": message.sender_id,
                 "date": message.date,
             }

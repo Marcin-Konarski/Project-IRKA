@@ -67,6 +67,8 @@ export interface ChannelMessageData {
     channel_id: number;
     message_id: number;
     text: string;
+    media_url?: string | null;
+    media_type?: string | null;
     sender_id?: number | null;
     date: string;
 }

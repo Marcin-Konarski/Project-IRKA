@@ -1,4 +1,4 @@
-import { Component, input } from "@angular/core";
+import { Component, input, output } from "@angular/core";
 
 
 
@@ -10,5 +10,8 @@ import { Component, input } from "@angular/core";
 export class Card {
     channelName = input.required<string>();
     status = input<string>('Observed');
+    channelId = input<number | undefined>(undefined);
+    deleting = input<boolean>(false);
+    deleteRequested = output<void>();
 
 }

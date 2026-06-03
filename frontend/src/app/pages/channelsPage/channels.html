@@ -30,7 +30,7 @@
                 required
                 placeholder="Search messages"
                 [value]="searchQuery()"
-                (input)="searchQuery.set(messageSearchInput.value)"
+                (input)="onSearchInput(messageSearchInput.value)"
             />
         </label>
 
@@ -54,24 +54,42 @@
 
             @if (filteredMessages().length > 0) {
                 <div class="grid gap-4">
-                    @for (message of filteredMessages(); track message.key) {
+                    @for (group of paginatedChannelResults(); track group.channelKey) {
                         <article class="rounded-3xl border border-base-300 bg-base-100/80 p-5 shadow-lg backdrop-blur">
                             <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                                 <div class="min-w-0">
                                     <p class="text-xs uppercase tracking-[0.3em] text-base-content/50">Channel</p>
-                                    <h3 class="mt-2 break-words text-xl font-semibold leading-tight">{{ message.channelName }}</h3>
-                                    <p class="mt-1 text-sm text-base-content/60">{{ message.channelTitle }}</p>
+                                    <h3 class="mt-2 break-words text-xl font-semibold leading-tight">{{ group.channelName }}</h3>
+                                    <p class="mt-1 text-sm text-base-content/60">{{ group.channelTitle }}</p>
                                 </div>
-                                @if (message.dateLabel) {
-                                    <span class="badge badge-outline badge-primary shrink-0 whitespace-nowrap">{{ message.dateLabel }}</span>
-                                }
+                                <span class="badge badge-outline badge-primary shrink-0 whitespace-nowrap">{{ group.messages.length }} message(s)</span>
                             </div>
 
-                            <p class="mt-4 whitespace-pre-wrap text-sm leading-6 text-base-content/80">
-                                {{ message.text }}
-                            </p>
+                            <div class="mt-4 max-h-80 space-y-3 overflow-y-auto pr-2">
+                                @for (message of group.messages; track message.key) {
+                                    <div class="rounded-2xl border border-base-300/70 bg-base-100/70 p-3">
+                                        @if (message.dateLabel) {
+                                            <p class="text-xs text-base-content/50">{{ message.dateLabel }}</p>
+                                        }
+                                        <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-base-content/80">
+                                            {{ message.text }}
+                                        </p>
+                                        @if (message.mediaUrl) {
+                                            <a class="mt-2 inline-flex text-xs font-medium text-primary hover:underline" [href]="message.mediaUrl" target="_blank" rel="noopener noreferrer">
+                                                Open {{ message.mediaType || 'media' }} link
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </article>
                     }
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <span class="text-sm text-base-content/60">Page {{ currentPage() }} / {{ totalPages() }}</span>
+                    <button class="btn btn-sm btn-outline" type="button" (click)="goToPreviousPage()" [disabled]="currentPage() <= 1">Prev</button>
+                    <button class="btn btn-sm btn-outline" type="button" (click)="goToNextPage()" [disabled]="currentPage() >= totalPages()">Next</button>
                 </div>
             } @else {
                 <div class="rounded-3xl border border-dashed border-base-300 bg-base-100/60 p-10 text-center">
@@ -88,7 +106,13 @@
         @if (observedChannels().length > 0) {
             <div class="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 @for (channel of observedChannels(); track channel.channelName) {
-                    <app-card [channelName]="channel.channelName" [status]="channel.status"></app-card>
+                    <app-card
+                        [channelName]="channel.channelName"
+                        [status]="channel.status"
+                        [channelId]="channel.id"
+                        [deleting]="deletingChannelId() === channel.id"
+                        (deleteRequested)="deleteChannel(channel)"
+                    ></app-card>
                 }
             </div>
         } @else {
