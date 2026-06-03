@@ -1,5 +1,7 @@
 import { Injectable, signal } from "@angular/core";
 
+import { isTokenExpired } from "../auth/token";
+
 
 @Injectable({providedIn: "root"})
 export class UserState {
@@ -18,11 +20,21 @@ export class UserState {
         const token = localStorage.getItem(UserState.TOKEN_KEY) ?? "";
         const username = localStorage.getItem(UserState.USERNAME_KEY) ?? "";
 
-        if (token) {
+        if (token && !isTokenExpired(token)) {
             this._isLoggedIn.set(true);
             this._accessToken.set(token);
             this._username.set(username);
+            return;
         }
+
+        if (token) {
+            this.clearUser();
+        }
+    }
+
+    hasValidSession(): boolean {
+        const token = this._accessToken();
+        return Boolean(token) && !isTokenExpired(token);
     }
 
     setUser(username: string, token: string) {

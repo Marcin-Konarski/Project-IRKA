@@ -1,8 +1,10 @@
-@if (showAlert() || showAuthRequiredAlert() || showErrorAlert().errors) {
+@if (showAlert() || showSessionExpiredAlert() || showAuthRequiredAlert() || showErrorAlert().errors) {
   <div class="mb-4 flex flex-col gap-3">
-    <app-alert [type]="showAlert() ? 'success' : (showAuthRequiredAlert() ? 'warning' : 'error')" width="w-[700px]">
+    <app-alert [type]="showAlert() ? 'success' : ((showSessionExpiredAlert() || showAuthRequiredAlert()) ? 'warning' : 'error')" width="w-[700px]">
       @if (showAlert()) {
         Successfuly created account! Please log in now.
+      } @else if (showSessionExpiredAlert()) {
+        Sesja wygasla. Zaloguj sie ponownie, aby zobaczyc kanaly i profil.
       } @else if (showAuthRequiredAlert()) {
         Aby przejsc do tej podstrony, najpierw musisz sie zalogowac.
       } @else {

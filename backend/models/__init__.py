@@ -4,5 +4,6 @@ from .backfill import BackfillJob
 from .monitor import MonitorJob
 from .channels import Channel
 from .observed_channel import ObservedChannel
+from .favorite import FavoriteMessage
 
-__all__ = ["User", "Channel", "Message", "BackfillJob", "MonitorJob", "ObservedChannel"]
+__all__ = ["User", "Channel", "Message", "BackfillJob", "MonitorJob", "ObservedChannel", "FavoriteMessage"]

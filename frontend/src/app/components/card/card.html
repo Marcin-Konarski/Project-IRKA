@@ -17,7 +17,7 @@
             <button
                 class="btn btn-error btn-outline btn-sm btn-square"
                 type="button"
-                [disabled]="deleting() || !channelId()"
+                [disabled]="deleting()"
                 (click)="deleteRequested.emit()"
                 aria-label="Delete channel"
                 title="Delete channel from database"
@@ -27,7 +27,7 @@
                 </svg>
             </button>
 
-            <button class="btn btn-primary btn-sm" type="button">Open</button>
+            <a class="btn btn-primary btn-sm" [routerLink]="channelId() ? ['/channels', channelId()] : null">Open</a>
         </div>
     </div>
 </div>

@@ -10,7 +10,7 @@ from ..models import Message, BackfillJob, MonitorJob, Channel, ObservedChannel,
 from ..core.security import get_user_and_session
 from ..core.queue import JobQueue
 from ..core.subscribers import SubscribersQueue
-from ..core.channel_utils import normalize_telegram_channel_reference
+from ..core.channel_utils import normalize_telegram_channel_reference, build_telegram_message_url_from_channel
 from ..core.monitor import MonitorWorker
 
 
@@ -108,11 +108,21 @@ async def get_messages(channel_id: Annotated[int, Path()], user_and_session: Ann
     if not observed:
         raise HTTPException(status_code=404, detail="Channel not found")
 
+    channel = session.get(Channel, channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
     messages = session.exec(
         select(Message).where(Message.channel_id == channel_id)
     ).all()
 
-    return messages
+    return [
+        {
+            **message.model_dump(),
+            "telegram_url": message.telegram_url or build_telegram_message_url_from_channel(message.message_id, channel),
+        }
+        for message in messages
+    ]
 
 
 @router.get("/channels/{channel_id}/events", status_code=status.HTTP_200_OK)
@@ -177,6 +187,29 @@ async def delete_channel(channel_id: Annotated[int, Path()], user_and_session: A
         session.delete(job)
 
     session.delete(channel)
+    session.commit()
+
+
+@router.delete("/observed-channels/by-channel-name/{channel_name}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_observed_channel_by_name(channel_name: str, user_and_session: Annotated[tuple, Depends(get_user_and_session)]):
+    user, session = user_and_session
+
+    observed = session.exec(
+        select(ObservedChannel).where(
+            ObservedChannel.user_id == user.id,
+            ObservedChannel.channel_name == channel_name,
+        )
+    ).all()
+
+    for entry in observed:
+        session.delete(entry)
+
+    jobs = session.exec(
+        select(BackfillJob).where(BackfillJob.channel_name == channel_name)
+    ).all()
+    for job in jobs:
+        session.delete(job)
+
     session.commit()
 
 

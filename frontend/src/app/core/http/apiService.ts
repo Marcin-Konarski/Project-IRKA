@@ -3,7 +3,7 @@ import { inject, Injectable } from "@angular/core";
 import { firstValueFrom } from "rxjs";
 
 import { ApiResult, LoginData, LoginResponseBody, RegisterData, RegisterResponseBody,
-    StartBackfillReturnData, BackfillRequest, ChannelCardData, BackfillJobData, ChannelMessageData, ProfileStatsData } from "../../types";
+    StartBackfillReturnData, BackfillRequest, ChannelCardData, BackfillJobData, ChannelMessageData, ProfileStatsData, FavoriteMessageData } from "../../types";
 
 export interface TelegramCodeRequest {
     phone: string;
@@ -99,6 +99,22 @@ export class ApiService {
 
     async deleteChannel(channelId: number) {
         return await this.apiDeleteTemplate<null>(`/channels/${channelId}`);
+    }
+
+    async deleteObservedChannel(channelName: string) {
+        return await this.apiDeleteTemplate<null>(`/observed-channels/by-channel-name/${encodeURIComponent(channelName)}`);
+    }
+
+    async addFavorite(body: Partial<FavoriteMessageData>) {
+        return await this.apiPostTemplate<any, { id: string }>("/favorites", body);
+    }
+
+    async removeFavorite(favoriteId: string) {
+        return await this.apiDeleteTemplate<null>(`/favorites/${favoriteId}`);
+    }
+
+    async getFavorites() {
+        return await this.apiGetTemplate<FavoriteMessageData[]>("/favorites");
     }
 
     async requestTelegramCode(phone: string) {

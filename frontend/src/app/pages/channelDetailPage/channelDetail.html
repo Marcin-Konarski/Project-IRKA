@@ -1,0 +1,88 @@
+<div class="max-w-6xl mx-auto px-4 pt-6">
+
+    <div class="flex items-center gap-4 pb-6">
+        <a class="btn btn-ghost btn-sm btn-circle" routerLink="/channels">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </a>
+        <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-base-content/50">Channel</p>
+            <h1 class="text-2xl font-semibold">{{ channelName() }}</h1>
+            @if (channelTitle()) {
+                <p class="text-sm text-base-content/60">{{ channelTitle() }}</p>
+            }
+        </div>
+    </div>
+
+    <div class="sticky top-0 z-10 bg-base-100 pb-4">
+        <div class="flex items-end justify-between gap-4">
+            <label class="input max-w-xs bg-transparent flex-1">
+                <svg class="h-[1em] w-[1em] opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                </svg>
+                <input #searchInput type="search" required placeholder="Search messages" [value]="searchQuery()" (input)="onSearchInput(searchInput.value)" />
+            </label>
+
+            @if (totalPages() > 1) {
+                <div class="flex items-center gap-3 shrink-0">
+                    <span class="text-sm text-base-content/60">Page {{ currentPage() }} / {{ totalPages() }}</span>
+                    <button class="btn btn-xs btn-outline" type="button" (click)="goToPreviousPage()" [disabled]="currentPage() <= 1">Prev</button>
+                    <button class="btn btn-xs btn-outline" type="button" (click)="goToNextPage()" [disabled]="currentPage() >= totalPages()">Next</button>
+                </div>
+            }
+        </div>
+
+        <p class="mt-1 text-sm text-base-content/60">{{ filteredMessages().length }} message(s)</p>
+    </div>
+
+    <div class="flex flex-col gap-3 pb-8">
+        @for (message of paginatedMessages(); track message.id) {
+            <div [id]="'message-' + message.message_id" class="rounded-2xl border border-base-300/70 bg-base-100/70 p-4">
+                @if (message.date) {
+                    <p class="text-xs text-black">{{ formatDate(message.date) }}</p>
+                }
+                <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-base-content/80"
+                    [innerHTML]="(message.text || 'No text available') | highlight: searchQuery()">
+                </p>
+                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 items-center">
+                    @if (message.media_url) {
+                        <a class="inline-flex text-xs font-medium text-primary hover:underline" [href]="message.media_url" target="_blank" rel="noopener noreferrer">
+                            Open {{ message.media_type || 'media' }} link
+                        </a>
+                    }
+                    @if (message.telegram_url) {
+                        <a class="inline-flex text-xs font-medium text-primary hover:underline" [href]="message.telegram_url" target="_blank" rel="noopener noreferrer">
+                            Open message in Telegram
+                        </a>
+                    }
+                    <button type="button" class="ml-auto btn btn-xs btn-ghost" (click)="toggleFavorite(message.channel_id, message.message_id, channelName(), message.text, message.media_url ?? undefined, message.media_type ?? undefined, message.telegram_url ?? undefined, message.date)">
+                        @if (isFavorite(message.channel_id, message.message_id)) {
+                            <svg class="h-4 w-4 text-yellow-500" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        } @else {
+                            <svg class="h-4 w-4 text-base-content/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        }
+                    </button>
+                </div>
+            </div>
+        }
+        @empty {
+            <div class="rounded-3xl border border-dashed border-base-300 bg-base-100/60 p-10 text-center">
+                <p class="text-lg font-medium">No messages</p>
+                <p class="mt-2 text-sm text-base-content/60">
+                    @if (searchQuery().trim()) {
+                        No messages match your search.
+                    } @else {
+                        This channel has no messages yet.
+                    }
+                </p>
+            </div>
+        }
+    </div>
+
+</div>

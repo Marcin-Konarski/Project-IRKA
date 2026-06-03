@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from .db.database import init_db
 from .core.config import config
 from .db.session import SessionLocal
-from .routers import channels, users
+from .routers import channels, users, favorites
 from .core.backfill import BackfillWorker
 from .core.monitor import MonitorWorker
 from .core.worker import run_worker_safe
@@ -65,6 +65,7 @@ app.add_middleware(
 
 app.include_router(users.router)
 app.include_router(channels.router)
+app.include_router(favorites.router)
 
 
 @app.get("/")

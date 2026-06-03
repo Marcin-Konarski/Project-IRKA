@@ -69,6 +69,7 @@ export interface ChannelMessageData {
     text: string;
     media_url?: string | null;
     media_type?: string | null;
+    telegram_url?: string | null;
     sender_id?: number | null;
     date: string;
 }
@@ -82,6 +83,19 @@ export interface BackfillJobData {
     last_message_id: number;
     error?: string | null;
     created_at?: string | null;
+}
+
+export interface FavoriteMessageData {
+    id: string;
+    channel_id: number;
+    message_id: number;
+    channel_name: string;
+    text: string;
+    media_url?: string | null;
+    media_type?: string | null;
+    telegram_url?: string | null;
+    date?: string | null;
+    created_at: string;
 }
 
 export interface ProfileChannelStat {

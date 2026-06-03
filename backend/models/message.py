@@ -18,6 +18,7 @@ class Message(SQLModel, table=True):
     text: str = Field(default="")
     media_url: str | None = None
     media_type: str | None = None
+    telegram_url: str | None = None
     sender_id: int | None = Field(default=None, sa_column=Column(BigInteger, nullable=True))
     date: datetime = Field(index=True)
 

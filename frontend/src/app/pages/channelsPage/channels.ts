@@ -7,6 +7,7 @@ import { takeWhile, tap } from "rxjs";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
 import { Modal } from "../../components/modal/modal";
+import { HighlightPipe } from "../../pipes/highlight.pipe";
 import { JobStatusStreamData, ChannelCardData, ChannelMessageData } from "../../types";
 type ObservedChannel = {
     channelName: string;
@@ -18,11 +19,15 @@ type ObservedChannel = {
 
 type SearchMessage = {
     key: string;
+    channelId: number;
+    messageId: number;
     channelName: string;
     channelTitle: string;
     text: string;
     mediaUrl?: string;
     mediaType?: string;
+    telegramUrl?: string;
+    date: string | undefined;
     dateLabel: string;
     ts: number;
     searchIndex: string;
@@ -70,7 +75,7 @@ function normalizeSearchQuery(value: string): string {
     standalone: true,
     selector: 'app-channels',
     templateUrl: './channels.html',
-    imports: [Card, Modal],
+    imports: [Card, Modal, HighlightPipe],
     host: {
         class: 'block w-full h-full min-h-0',
     },
@@ -86,7 +91,67 @@ export class ChannelsPage {
     searchQuery = signal("");
     currentPage = signal(1);
     readonly pageSize = 10;
+    readonly messagesPerPage = 5;
+    messagePages = signal<Record<string, number>>({});
     visibleMessages = signal<SearchMessage[]>([]);
+    favorites = signal<Set<string>>(new Set());
+    favoriteIds = signal<Map<string, string>>(new Map());
+
+    async loadFavorites() {
+        const resp = await this.http.getFavorites();
+        if (resp.ok) {
+            const set = new Set<string>();
+            const map = new Map<string, string>();
+            for (const f of resp.response.body ?? []) {
+                const key = `${f.channel_id}:${f.message_id}`;
+                set.add(key);
+                map.set(key, f.id);
+            }
+            this.favorites.set(set);
+            this.favoriteIds.set(map);
+        }
+    }
+
+    isFavorite(channelId: number, messageId: number): boolean {
+        return this.favorites().has(`${channelId}:${messageId}`);
+    }
+
+    async toggleFavorite(channelId: number, messageId: number, channelName: string, text: string, mediaUrl: string | undefined, mediaType: string | undefined, telegramUrl: string | undefined, date: string | undefined) {
+        const key = `${channelId}:${messageId}`;
+        if (this.isFavorite(channelId, messageId)) {
+            const id = this.favoriteIds().get(key);
+            if (id) {
+                const resp = await this.http.removeFavorite(id);
+                if (resp.ok) {
+                    const next = new Set(this.favorites());
+                    next.delete(key);
+                    this.favorites.set(next);
+                    const nextIds = new Map(this.favoriteIds());
+                    nextIds.delete(key);
+                    this.favoriteIds.set(nextIds);
+                }
+            }
+        } else {
+            const resp = await this.http.addFavorite({
+                channel_id: channelId,
+                message_id: messageId,
+                channel_name: channelName,
+                text,
+                media_url: mediaUrl ?? null,
+                media_type: mediaType ?? null,
+                telegram_url: telegramUrl ?? null,
+                date: date ?? null,
+            });
+            if (resp.ok) {
+                const next = new Set(this.favorites());
+                next.add(key);
+                this.favorites.set(next);
+                const nextIds = new Map(this.favoriteIds());
+                nextIds.set(key, resp.response.body!.id);
+                this.favoriteIds.set(nextIds);
+            }
+        }
+    }
     filteredMessages = computed(() => {
         const query = normalizeSearchQuery(this.searchQuery());
 
@@ -134,7 +199,19 @@ export class ChannelsPage {
     paginatedChannelResults = computed(() => {
         const page = this.currentPage();
         const start = (page - 1) * this.pageSize;
-        return this.groupedFilteredMessages().slice(start, start + this.pageSize);
+        const groups = this.groupedFilteredMessages().slice(start, start + this.pageSize);
+        const msgPages = this.messagePages();
+
+        return groups.map(group => {
+            const msgPage = msgPages[group.channelKey] ?? 1;
+            const msgStart = (msgPage - 1) * this.messagesPerPage;
+            return {
+                ...group,
+                messages: group.messages.slice(msgStart, msgStart + this.messagesPerPage),
+                totalMessageCount: group.messages.length,
+                currentMessagePage: msgPage,
+            };
+        });
     });
     // Modal related stuff:
     modalHeader = signal("Add new channel");
@@ -190,6 +267,7 @@ export class ChannelsPage {
         });
 
         void this.loadObservedChannels();
+        void this.loadFavorites();
     }
 
     private parsePageParam(value: string | null): number {
@@ -203,6 +281,7 @@ export class ChannelsPage {
     onSearchInput(value: string) {
         this.searchQuery.set(value);
         this.currentPage.set(1);
+        this.messagePages.set({});
     }
 
     goToPreviousPage() {
@@ -211,6 +290,24 @@ export class ChannelsPage {
 
     goToNextPage() {
         this.currentPage.update(value => Math.min(this.totalPages(), value + 1));
+    }
+
+    calcMessageTotalPages(totalCount: number): number {
+        return Math.max(1, Math.ceil(totalCount / this.messagesPerPage));
+    }
+
+    goToPrevMessagePage(channelKey: string) {
+        this.messagePages.update(pages => {
+            const current = pages[channelKey] ?? 1;
+            return { ...pages, [channelKey]: Math.max(1, current - 1) };
+        });
+    }
+
+    goToNextMessagePage(channelKey: string, totalPages: number) {
+        this.messagePages.update(pages => {
+            const current = pages[channelKey] ?? 1;
+            return { ...pages, [channelKey]: Math.min(totalPages, current + 1) };
+        });
     }
 
     async loadObservedChannels() {
@@ -300,11 +397,15 @@ export class ChannelsPage {
 
                     return {
                         key: `${channel.id}:${message.message_id}`,
+                        channelId: channel.id,
+                        messageId: message.message_id,
                         channelName: channel.channelName,
                         channelTitle,
                         text,
                         mediaUrl: message.media_url ?? undefined,
                         mediaType: message.media_type ?? undefined,
+                        telegramUrl: message.telegram_url ?? undefined,
+                        date: message.date,
                         dateLabel,
                         ts: message.date ? new Date(message.date).getTime() : 0,
                         searchIndex,
@@ -354,7 +455,7 @@ export class ChannelsPage {
                 console.log("Backfill progress:", normalizedChannelName, value);
                 this.upsertObservedChannel(normalizedChannelName, value.status);
 
-                if (value.status === "done") {
+                if (value.status === "done" || value.status === "failed") {
                     void this.loadObservedChannels();
                 }
             }),
@@ -373,28 +474,29 @@ export class ChannelsPage {
     }
 
     async deleteChannel(channel: ObservedChannel) {
-        if (typeof channel.id !== "number") {
-            return;
-        }
+        if (typeof channel.id === "number") {
+            this.deletingChannelId.set(channel.id);
 
-        this.deletingChannelId.set(channel.id);
+            const response = await this.http.deleteChannel(channel.id);
+            if (!response.ok) {
+                console.error(`Failed to delete channel ${channel.channelName}:`, response.error);
+                this.deletingChannelId.set(null);
+                return;
+            }
 
-        const response = await this.http.deleteChannel(channel.id);
-        if (!response.ok) {
-            console.error(`Failed to delete channel ${channel.channelName}:`, response.error);
             this.deletingChannelId.set(null);
-            return;
+        } else {
+            await this.http.deleteObservedChannel(channel.channelName);
         }
 
         this.observedChannels.update(current =>
-            current.filter(item => item.id !== channel.id)
+            current.filter(item => channelKey(item.channelName) !== channelKey(channel.channelName))
         );
 
         this.visibleMessages.update(current =>
             current.filter(message => message.channelName !== channel.channelName)
         );
 
-        this.deletingChannelId.set(null);
         await this.loadObservedChannels();
     }
 

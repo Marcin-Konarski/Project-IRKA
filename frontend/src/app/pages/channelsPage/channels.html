@@ -4,7 +4,7 @@
     - `w-full` lets it expand to the available width
     - `h-full min-h-0` lets it participate correctly in the app's flex "remaining space" layout
 -->
-<div class="w-full h-full min-h-0 max-w-6xl mx-auto px-4 pt-6 flex flex-col gap-10">
+<div class="w-full h-full min-h-0 max-w-6xl mx-auto px-4 pt-6 pb-8 flex flex-col gap-10">
 
     <div class="flex flex-col gap-3 rounded-3xl border border-base-300 bg-gradient-to-br from-base-100 to-base-200/70 p-6 shadow-sm">
         <p class="text-sm uppercase tracking-[0.35em] text-base-content/50">Channels</p>
@@ -62,23 +62,52 @@
                                     <h3 class="mt-2 break-words text-xl font-semibold leading-tight">{{ group.channelName }}</h3>
                                     <p class="mt-1 text-sm text-base-content/60">{{ group.channelTitle }}</p>
                                 </div>
-                                <span class="badge badge-outline badge-primary shrink-0 whitespace-nowrap">{{ group.messages.length }} message(s)</span>
+                                <span class="badge badge-outline badge-primary shrink-0 whitespace-nowrap">{{ group.totalMessageCount }} message(s)</span>
                             </div>
 
-                            <div class="mt-4 max-h-80 space-y-3 overflow-y-auto pr-2">
+                            <div class="mt-4 space-y-3">
                                 @for (message of group.messages; track message.key) {
                                     <div class="rounded-2xl border border-base-300/70 bg-base-100/70 p-3">
                                         @if (message.dateLabel) {
-                                            <p class="text-xs text-base-content/50">{{ message.dateLabel }}</p>
+                                            <p class="text-xs text-black">{{ message.dateLabel }}</p>
                                         }
-                                        <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-base-content/80">
-                                            {{ message.text }}
+                                        <p class="mt-1 whitespace-pre-wrap text-sm leading-6 text-base-content/80"
+                                            [innerHTML]="message.text | highlight: searchQuery()">
                                         </p>
-                                        @if (message.mediaUrl) {
-                                            <a class="mt-2 inline-flex text-xs font-medium text-primary hover:underline" [href]="message.mediaUrl" target="_blank" rel="noopener noreferrer">
-                                                Open {{ message.mediaType || 'media' }} link
-                                            </a>
-                                        }
+                                        <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 items-center">
+                                            @if (message.mediaUrl) {
+                                                <a class="inline-flex text-xs font-medium text-primary hover:underline" [href]="message.mediaUrl" target="_blank" rel="noopener noreferrer">
+                                                    Open {{ message.mediaType || 'media' }} link
+                                                </a>
+                                            }
+                                            @if (message.telegramUrl) {
+                                                <a class="inline-flex text-xs font-medium text-primary hover:underline" [href]="message.telegramUrl" target="_blank" rel="noopener noreferrer">
+                                                    Open message in Telegram
+                                                </a>
+                                            }
+                                            <button type="button" class="ml-auto btn btn-xs btn-ghost" (click)="toggleFavorite(message.channelId, message.messageId, message.channelName, message.text, message.mediaUrl, message.mediaType, message.telegramUrl, message.date)">
+                                                @if (isFavorite(message.channelId, message.messageId)) {
+                                                    <svg class="h-4 w-4 text-yellow-500" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1">
+                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                } @else {
+                                                    <svg class="h-4 w-4 text-base-content/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                }
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @if (!$last) {
+                                        <hr class="border-black">
+                                    }
+                                }
+                                @let totalMessagePages = calcMessageTotalPages(group.totalMessageCount);
+                                @if (totalMessagePages > 1) {
+                                    <div class="flex items-center justify-end gap-3 pt-1">
+                                        <span class="text-xs text-base-content/60">Page {{ group.currentMessagePage }} / {{ totalMessagePages }}</span>
+                                        <button class="btn btn-xs btn-outline" type="button" (click)="goToPrevMessagePage(group.channelKey)" [disabled]="group.currentMessagePage <= 1">Prev</button>
+                                        <button class="btn btn-xs btn-outline" type="button" (click)="goToNextMessagePage(group.channelKey, totalMessagePages)" [disabled]="group.currentMessagePage >= totalMessagePages">Next</button>
                                     </div>
                                 }
                             </div>
@@ -86,11 +115,6 @@
                     }
                 </div>
 
-                <div class="flex items-center justify-end gap-3 pt-2">
-                    <span class="text-sm text-base-content/60">Page {{ currentPage() }} / {{ totalPages() }}</span>
-                    <button class="btn btn-sm btn-outline" type="button" (click)="goToPreviousPage()" [disabled]="currentPage() <= 1">Prev</button>
-                    <button class="btn btn-sm btn-outline" type="button" (click)="goToNextPage()" [disabled]="currentPage() >= totalPages()">Next</button>
-                </div>
             } @else {
                 <div class="rounded-3xl border border-dashed border-base-300 bg-base-100/60 p-10 text-center">
                     <p class="text-lg font-medium">No matching messages</p>
@@ -102,6 +126,7 @@
         </section>
     }
 
+    @if (!searchQuery().trim()) {
     <div class="w-full flex justify-center">
         @if (observedChannels().length > 0) {
             <div class="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -125,5 +150,5 @@
         }
 
     </div>
-
+    }
 </div>

@@ -5,7 +5,7 @@ from telethon.tl.types import Message as TgMessage, Chat, Channel
 from sqlmodel import select
 
 from .config import config
-from .channel_utils import resolve_telegram_channel
+from .channel_utils import resolve_telegram_channel, build_telegram_message_url
 from .subscribers import SubscribersQueue
 from ..models import MonitorJob
 from ..db.utility import insert_messages
@@ -98,15 +98,7 @@ class MonitorWorker:
         elif getattr(message, "document", None):
             media_type = "document"
 
-        username = getattr(channel, "username", None)
-        if username:
-            return f"https://t.me/{username}/{message.id}", media_type
-
-        channel_id = getattr(channel, "id", None)
-        if channel_id:
-            return f"https://t.me/c/{channel_id}/{message.id}", media_type
-
-        return None, media_type
+        return build_telegram_message_url(message.id, channel), media_type
 
     async def run_monitor_job(self, session_factory, channel_name: str, channel: Channel) -> None:
         client = await self.get_client()
@@ -120,6 +112,7 @@ class MonitorWorker:
             raw_chat_id = event.chat_id
             normalized_channel_id = int(str(raw_chat_id).lstrip("-100")) if raw_chat_id < 0 else raw_chat_id
             media_url, media_type = self._build_media_link(message, channel)
+            telegram_url = build_telegram_message_url(message.id, channel)
 
             row = {
                 "channel_id": normalized_channel_id,
@@ -127,6 +120,7 @@ class MonitorWorker:
                 "text": message.text or "",
                 "media_url": media_url,
                 "media_type": media_type,
+                "telegram_url": telegram_url,
                 "sender_id": message.sender_id,
                 "date": message.date,
             }

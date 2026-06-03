@@ -1,4 +1,5 @@
 import { Component, input, output } from "@angular/core";
+import { RouterLink } from "@angular/router";
 
 
 
@@ -6,6 +7,7 @@ import { Component, input, output } from "@angular/core";
     standalone: true,
     selector: 'app-card',
     templateUrl: './card.html',
+    imports: [RouterLink],
 })
 export class Card {
     channelName = input.required<string>();
@@ -13,5 +15,4 @@ export class Card {
     channelId = input<number | undefined>(undefined);
     deleting = input<boolean>(false);
     deleteRequested = output<void>();
-
 }

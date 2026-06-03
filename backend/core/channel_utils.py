@@ -70,3 +70,33 @@ async def resolve_telegram_channel(client, channel: str):
     raise ValueError(
         f"Could not resolve '{channel}'. Use a public username, a t.me link, or the exact channel title visible in your dialogs."
     )
+
+
+def _entity_id_for_tme_c_link(entity_id: int) -> str:
+    raw = str(entity_id)
+    if raw.startswith("-100"):
+        return raw[4:]
+    return raw.lstrip("-") if entity_id < 0 else raw
+
+
+def build_telegram_message_url(message_id: int, entity) -> str | None:
+    """Public message permalink on t.me (works for text and media messages)."""
+    username = getattr(entity, "username", None)
+    if username:
+        return f"https://t.me/{username}/{message_id}"
+
+    entity_id = getattr(entity, "id", None)
+    if entity_id is not None:
+        link_id = _entity_id_for_tme_c_link(entity_id)
+        return f"https://t.me/c/{link_id}/{message_id}"
+
+    return None
+
+
+def build_telegram_message_url_from_channel(message_id: int, channel: DBChannel) -> str | None:
+    """Build a t.me link from stored channel metadata (for backfill of old rows)."""
+    name = (channel.channel_name or "").strip()
+    if name and not name.lstrip("-").isdigit():
+        return f"https://t.me/{name.lstrip('@')}/{message_id}"
+
+    return f"https://t.me/c/{_entity_id_for_tme_c_link(channel.id)}/{message_id}"

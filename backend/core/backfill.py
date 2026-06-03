@@ -11,7 +11,7 @@ from telethon.tl.types import Message as TgMessage, User, Chat, Channel as TgCha
 from sqlmodel import select
 
 from .config import config
-from .channel_utils import resolve_telegram_channel
+from .channel_utils import resolve_telegram_channel, build_telegram_message_url
 from .queue import JobQueue
 from ..db.utility import insert_messages
 from ..db.session import SessionLocal
@@ -134,6 +134,7 @@ class BackfillWorker:
                                 "text": msg.text or "",
                                 "media_url": media_url,
                                 "media_type": media_type,
+                                "telegram_url": build_telegram_message_url(msg.id, entity),
                                 "sender_id": msg.sender_id,
                                 "date": msg.date,
                             }
@@ -225,15 +226,7 @@ class BackfillWorker:
         elif getattr(msg, "document", None):
             media_type = "document"
 
-        username = getattr(entity, "username", None)
-        if username:
-            return f"https://t.me/{username}/{msg.id}", media_type
-
-        entity_id = getattr(entity, "id", None)
-        if entity_id:
-            return f"https://t.me/c/{entity_id}/{msg.id}", media_type
-
-        return None, media_type
+        return build_telegram_message_url(msg.id, entity), media_type
 
     async def _process_messages(self, message_iter, session, job, queue, entity, batch_size, offset_id, total):
 
@@ -246,6 +239,7 @@ class BackfillWorker:
             batch.append({
                 "media_url": media_url,
                 "media_type": media_type,
+                "telegram_url": build_telegram_message_url(msg.id, entity),
                 "channel_id": entity.id,
                 "message_id": msg.id,
                 "text": msg.text or "",
@@ -262,10 +256,10 @@ class BackfillWorker:
 
         return offset_id, total
 
-    async def _flush_batch(self, session, job, queue, batch, offset_id, total):
+    async def _flush_batch(self, session, job, queue, batch, offset_id, total, actual_last_id=None):
         insert_messages(session, batch)
 
-        offset_id = batch[-1]["message_id"]
+        offset_id = actual_last_id if actual_last_id is not None else batch[-1]["message_id"]
         total += len(batch)
 
         job.last_message_id = offset_id
@@ -309,6 +303,29 @@ class BackfillWorker:
         finally:
             await takeout_client.disconnect()
 
+    def _merge_group(self, group: list[TgMessage], entity) -> dict:
+        group.sort(key=lambda m: m.id)
+        first = group[0]
+
+        text = ""
+        for msg in group:
+            if msg.text:
+                text = msg.text
+                break
+
+        media_url, media_type = self._build_media_link(first, entity)
+
+        return {
+            "channel_id": entity.id,
+            "message_id": first.id,
+            "text": text,
+            "media_url": media_url,
+            "media_type": media_type,
+            "telegram_url": build_telegram_message_url(first.id, entity),
+            "sender_id": first.sender_id,
+            "date": first.date,
+        }
+
     async def _run_with_fallback(self, client, entity, session, job, queue, batch_size, offset_id, total):
 
         while True:
@@ -322,19 +339,33 @@ class BackfillWorker:
                     break
 
                 batch = []
-                for msg in batch_msgs:
-                    media_url, media_type = self._build_media_link(msg, entity)
-                    batch.append({
-                        "media_url": media_url,
-                        "media_type": media_type,
-                        "channel_id": entity.id,
-                        "message_id": msg.id,
-                        "text": msg.text or "",
-                        "sender_id": msg.sender_id,
-                        "date": msg.date,
-                    })
+                group_buffer = []
+                actual_last_id = offset_id
 
-                offset_id, total = await self._flush_batch(session, job, queue, batch, offset_id, total)
+                for msg in batch_msgs:
+                    actual_last_id = msg.id
+                    if msg.grouped_id is not None:
+                        group_buffer.append(msg)
+                    else:
+                        if group_buffer:
+                            batch.append(self._merge_group(group_buffer, entity))
+                            group_buffer = []
+                        media_url, media_type = self._build_media_link(msg, entity)
+                        batch.append({
+                            "media_url": media_url,
+                            "media_type": media_type,
+                            "telegram_url": build_telegram_message_url(msg.id, entity),
+                            "channel_id": entity.id,
+                            "message_id": msg.id,
+                            "text": msg.text or "",
+                            "sender_id": msg.sender_id,
+                            "date": msg.date,
+                        })
+
+                if group_buffer:
+                    batch.append(self._merge_group(group_buffer, entity))
+
+                offset_id, total = await self._flush_batch(session, job, queue, batch, offset_id, total, actual_last_id)
 
                 await asyncio.sleep(0.4 + random.random() * 0.6)
 
