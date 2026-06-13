@@ -108,4 +108,5 @@ export interface ProfileChannelStat {
 export interface ProfileStatsData {
     channels_count: number;
     channels_sorted_by_messages: ProfileChannelStat[];
+    favorites_count: number;
 }

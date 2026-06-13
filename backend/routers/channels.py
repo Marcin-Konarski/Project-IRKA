@@ -2,11 +2,11 @@ from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Path, Body
 from fastapi.responses import StreamingResponse
-from sqlmodel import select, Session
+from sqlmodel import select, func, Session
 
 from ..schemas.channel import ChannelRequest
 from ..db.session import SessionDep, get_session
-from ..models import Message, BackfillJob, MonitorJob, Channel, ObservedChannel, User
+from ..models import Message, BackfillJob, MonitorJob, Channel, ObservedChannel, User, FavoriteMessage
 from ..core.security import get_user_and_session
 from ..core.queue import JobQueue
 from ..core.subscribers import SubscribersQueue
@@ -232,7 +232,12 @@ async def get_profile_stats(user_and_session: Annotated[tuple, Depends(get_user_
         for channel in channels
     ]
 
+    favorites_count = session.exec(
+        select(func.count(FavoriteMessage.id)).where(FavoriteMessage.user_id == user.id)
+    ).one()
+
     return {
         "channels_count": len(channels_sorted_by_messages),
         "channels_sorted_by_messages": channels_sorted_by_messages,
+        "favorites_count": favorites_count,
     }

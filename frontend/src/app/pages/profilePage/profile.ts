@@ -21,6 +21,7 @@ export class ProfilePage {
     stats = signal<ProfileStatsData>({
         channels_count: 0,
         channels_sorted_by_messages: [],
+        favorites_count: 0,
     });
 
     constructor() {
@@ -45,7 +46,7 @@ export class ProfilePage {
             return;
         }
 
-        this.stats.set(response.response.body ?? { channels_count: 0, channels_sorted_by_messages: [] });
+        this.stats.set(response.response.body ?? { channels_count: 0, channels_sorted_by_messages: [], favorites_count: 0 });
         this.isLoading.set(false);
     }
 }

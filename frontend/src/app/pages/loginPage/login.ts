@@ -64,12 +64,10 @@ export class LoginPage {
             this.router.navigateByUrl(this.redirectTo);
         } else {
             const error = response?.error;
+            const status = error?.status;
             const detail = (error?.error as any)?.detail;
 
-            this.showErrorAlert.set({
-                errors: true,
-                message: typeof detail === "string" ? detail : (error?.message ?? "Error during login"),
-            });
+            this.showErrorAlert.set({ errors: true, message: "Invalid username or password." });
         }
     }
 

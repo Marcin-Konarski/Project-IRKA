@@ -84,3 +84,16 @@
 
 
 /* @custom-variant dark (&:where([data-theme=irkablack], [data-theme=irkablack] *)); */
+
+* {
+    cursor: default;
+}
+
+a, button, [role="button"], input, select, textarea, summary, label {
+    cursor: pointer;
+}
+
+input[type="text"], input[type="search"], input[type="url"], input[type="email"],
+input[type="password"], input[type="number"], textarea {
+    cursor: text;
+}

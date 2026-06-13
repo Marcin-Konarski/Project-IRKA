@@ -31,10 +31,18 @@ async def request_telegram_code(phone: str) -> str:
             SQLiteSession(str(session_path)),
             config.api_id,
             config.api_hash,
-            connection_retries=3,
+            connection_retries=5,
         )
 
         await client.connect()
+
+        # Upewnij się, że połączenie faktycznie jest aktywne przed wysłaniem żądania
+        for _ in range(3):
+            if client.is_connected():
+                break
+            await client.connect()
+        else:
+            raise ConnectionError("Could not establish connection to Telegram")
 
         try:
             result = await client.send_code_request(phone)
@@ -45,15 +53,12 @@ async def request_telegram_code(phone: str) -> str:
     try:
         return await _send_code()
     except Exception as e:
-        # Telethon occasionally asks to restart auth flow; reset local auth session once and retry.
-        if "AuthRestartError" in str(e):
+        try:
+            return await _send_code()
+        except Exception as retry_e:
             if session_path.exists():
                 session_path.unlink()
-            try:
-                return await _send_code()
-            except Exception as retry_e:
-                raise ValueError(f"Failed to request code: {str(retry_e)}")
-        raise ValueError(f"Failed to request code: {str(e)}")
+            raise ValueError(f"Failed to request code: {str(retry_e)}")
 
 
 async def verify_telegram_code(phone: str, code: str, phone_code_hash: str) -> bool:
